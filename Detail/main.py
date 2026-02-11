@@ -1,0 +1,193 @@
+import re
+import time
+import dashscope as dashscope
+from config import API_Key_QW
+from Search_content import *
+from Search_profession import *
+
+def clean_markdown(text):
+    """去除 Markdown 格式符号"""
+    if not text:
+        return ""
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # 去除 **
+    text = re.sub(r'### (.*)', r'\1', text)       # 去除 ###
+    text = re.sub(r'---', '', text)               # 去除 ---
+    return text.strip()
+
+def call_qianwen_api(messages, temperature=0.95, top_p=0.9, repetition_penalty=1.15, max_retries=5):
+    """
+    调用通义千问 API，带重试机制
+    
+    Args:
+        messages: 消息列表
+        temperature: 温度参数
+        top_p: top_p 参数
+        repetition_penalty: 重复惩罚参数
+        max_retries: 最大重试次数（默认5次）
+    
+    Returns:
+        API 返回的内容，或错误信息
+    """
+    dashscope.api_key = API_Key_QW
+    
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                # 指数退避：第1次重试等1秒，第2次等2秒，第3次等4秒...
+                wait_time = min(2 ** (attempt - 1), 10)  # 最多等待10秒
+                print(f"第 {attempt + 1} 次尝试（等待 {wait_time} 秒后重试）...")
+                time.sleep(wait_time)
+            
+            response = dashscope.Generation.call(
+                model=dashscope.Generation.Models.qwen_turbo,
+                messages=messages,
+                temperature=temperature,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                result_format='message'
+            )
+
+            if 'output' in response and 'choices' in response['output']:
+                return response['output']['choices'][0]['message']['content']
+            else:
+                error_msg = f"通义千问 API 返回了无效格式: {str(response)}"
+                if attempt < max_retries - 1:
+                    last_error = error_msg
+                    continue
+                return error_msg
+                
+        except Exception as e:
+            last_error = str(e)
+            error_type = type(e).__name__
+            
+            # 如果是 SSL 错误或连接错误，继续重试
+            if 'SSL' in error_type or 'Connection' in error_type or 'timeout' in str(e).lower():
+                if attempt < max_retries - 1:
+                    continue
+                else:
+                    return f"调用通义千问 API 失败（已重试 {max_retries} 次）: {error_type} - {last_error}\n建议：请检查网络连接或稍后重试"
+            else:
+                # 其他错误直接返回
+                return f"调用通义千问 API 出错: {error_type} - {last_error}"
+    
+    # 所有重试都失败
+    return f"调用通义千问 API 失败（已重试 {max_retries} 次）: {last_error}\n建议：请检查网络连接或稍后重试"
+
+def generate_fight_scene_with_reversal(prompt):
+    """生成包含反转的武打场景"""
+    reversal_template = """
+    请按"武打四段"创作，严格遵循篇幅比例与最低次数要求：
+    - 篇幅比例：氛围与背景交代≥15%，压制≈60%，转机≈10%，反杀≈15%
+    - 四段顺序：【压制阶段】【绝境加深】【微小转机】【反杀爆发】
+
+    写作硬性要求：
+    0) 正式交手前（至少200字，需丰富多感官描写）：
+        - 环境细节：多角度描写地点环境（视觉：光线、色彩、阴影；听觉：风声、水声、回声、寂静；触觉：温度、湿度、质感；嗅觉：气味、血腥、草木；空间：地形、障碍、视野）
+        - 氛围营造：通过环境细节营造紧张、压抑、危险等情绪氛围，让读者身临其境
+        - 人物状态：描写主角与对手的站位、姿态、眼神、呼吸、肌肉状态等细节
+        - 前因后果：交代此战的起因、双方立场、恩怨情仇、心理预期
+        - 心理活动：通过内心独白、回忆闪回、情绪波动展现主角的心理状态
+        - 细节动作：通过小动作（握剑、调整呼吸、观察地形、计算距离等）表现准备与紧张
+        - 人物命名：所有出场的人物都必须有具体的名字，禁止使用"他"、"对手"、"敌人"、"黑衣人"等代称，主角和对手都要有明确的姓名
+    1) 压制阶段（≈60%）：
+        - 要求：通过自然流畅的叙述展现至少5次对手有效命中/压制 + 3次主角无效反击（逐次加重）
+        - 严格禁止计数表达：绝对禁止使用"第一击"、"第二击"、"第三次"、"第四次"、"第五次"、"第X次"等任何计数词汇，必须用场景转换、时间推进、动作连贯等方式自然展现
+        - 叙述方式：通过"权杖横扫而来"、"又是一记直刺"、"趁势追击"、"攻势如潮"、"紧接着"、"随后"、"转瞬间"等自然过渡，让多次交锋流畅衔接，完全避免数字计数
+        - 技法细节：每次交锋必须出现具体技法细节（招式名、力路、角度、受力反馈、内力流转、呼吸节奏、环境互动）
+        - 累积代价：呈现累积性代价（体力下降、伤势叠加、内息紊乱、武器受损、地形限制），并明确"倒计时/禁制/约束"在逼迫决策
+        - 心理变化：展现主角从压迫→焦灼的心理转变，每次变化由具体外因触发
+    2) 绝境加深（≈10%）：再遭一次"几乎必败"的致命压制，禁止反转
+    3) 微小转机（≈10%）：仅允许来源于"洞察破绽/环境利用/诱敌深入/弃子求变/以伤换势"中的1-2种
+    4) 反杀爆发（≈15%）：在对手轻敌或惯性出招时切入破绽，最多2招半结束，过程紧凑克制，必须完整写到反杀成功、对手败亡或重伤的结果，不能中途停止
+    5) 禁止：跳过压制快速反杀、空话堆砌、结尾点题、使用任何计数方式（如"第一击"、"第二击"、"第三次"、"第四次"、"第五次"等）、仅写到胜负已分处、未完成反杀就停止
+    6) 人物命名：所有出场的人物都必须有具体的名字，禁止使用"他"、"对手"、"敌人"、"黑衣人"、"蒙面人"等代称，主角和对手都要有明确的姓名
+    7) 字数要求：1500字左右，必须完整呈现所有四段内容，特别是反杀阶段必须完整写到结果
+    8) 段落标注：必须在每个部分开始前添加标注，格式如下：
+       - 【氛围铺垫】（开篇氛围部分）
+       - 【压制阶段】（压制阶段部分）
+       - 【绝境加深】（绝境加深部分）
+       - 【微小转机】（转机部分）
+       - 【反杀爆发】（反杀部分）
+
+    心理与节奏：
+    - 心态线随局势推进：压迫→焦灼→冷静→决断；每次变化由具体外因触发
+    - 禁止空话与总结陈词，不写结果之后的收束
+    - 叙述要自然流畅，避免机械化的列举
+    
+    具体场景要求：{prompt}
+    """
+    
+    return chat_once(reversal_template.format(prompt=prompt))
+
+
+def chat_once(prompt):
+    """单轮对话：输入一次问题，直接返回结果"""
+    # 检索参考资料
+    reference_content = searchresult_content(prompt)
+    reference_profession = searchresult_profession(prompt)
+
+    # 系统角色设定
+    system_message = {
+        "role": "system",
+        "content": f"""
+            角色：你是一个仙侠小说作者，擅长仙侠小说情节创作，情节跌宕起伏，细节描写丰富
+            限制: 根据下面的要求直接输出创作的情节,不要引入和结局,1500字左右，必须完整写完
+            提示：如果"参考内容"和"专业知识"，与问题明显无关，可以完全不参考
+
+            武打场景特殊要求：
+            - 结构比例：开篇氛围背景≥15%，压制≈60%，转机≈10%，反杀≈15%，严格按此比例分配篇幅
+            - 段落节奏：分为【压制阶段】【绝境加深】【微小转机】【反杀爆发】四段依次推进
+            - 开篇氛围（≥200字，需丰富多感官描写）：
+              1) 环境细节：多角度描写地点环境（视觉：光线、色彩、阴影；听觉：风声、水声、回声；触觉：温度、湿度、质感；嗅觉：气味、血腥；空间：地形、障碍、视野）
+              2) 氛围营造：通过环境细节营造紧张、压抑、危险等情绪氛围
+              3) 人物状态：描写主角与对手的站位、姿态、眼神、呼吸、肌肉状态等细节
+              4) 前因后果：交代此战的起因、双方立场、恩怨情仇、心理预期
+              5) 心理活动：通过内心独白、回忆闪回、情绪波动展现主角的心理状态
+              6) 细节动作：通过小动作（握剑、调整呼吸、观察地形等）表现准备与紧张
+            - 压制阶段最低要求：
+              1) 通过自然流畅的叙述展现至少5次"对方有效命中/压制"与3次"主角无效反击/被迫化解"
+              2) 严格禁止计数表达：绝对禁止使用"第一击"、"第二击"、"第三击"、"第四次"、"第五次"、"第X次"等任何计数词汇，必须用场景转换、时间推进、动作连贯等方式自然展现
+              3) 每次交手包含具体技法细节（招式名/劲路/受力点/内力流转/呼吸节奏/环境干扰）
+              4) 呈现累积性消耗：体力下降、伤势叠加、内息紊乱、武器受损、场地受限
+              5) 设置倒计时/禁制/地形劣势等外在压力，制造"必须拖时间/找机会"的张力
+              6) 展现主角从压迫→焦灼的心理转变，每次变化由具体外因触发
+            - 绝境加深：在压制后再追加1次"几乎致命/必败"的重压，禁止在此处提前反转
+            - 转机限定：仅能来源于"洞察破绽/利用环境/弃子求变/诱敌深入/自残换势"中的1-2种
+            - 反杀约束：只允许在对方自信/轻敌/惯性出招时打入关键破绽，过程不超过2招半，必须完整写到反杀成功、对手败亡或重伤的结果，不能中途停止
+            - 心理线：从压迫→焦灼→冷静→决断，心理每变一次，要由具体外因触发
+            - 禁止：跳过压制快速反杀、空话堆砌、结尾点题、使用任何计数方式（如"第一击"、"第二击"、"第三次"、"第四次"、"第五次"等）、仅写到胜负已分处、未完成反杀就停止
+            - 叙述要自然流畅，避免机械化的列举，让多次交锋通过"权杖横扫而来"、"又是一记直刺"、"趁势追击"、"紧接着"、"随后"、"转瞬间"等自然过渡，完全避免数字计数
+            - 人物命名：所有出场的人物都必须有具体的名字，禁止使用"他"、"对手"、"敌人"、"黑衣人"、"蒙面人"等代称，主角和对手都要有明确的姓名
+            - 字数要求：1500字左右，必须完整呈现所有四段内容，特别是反杀阶段必须完整写到结果
+            - 段落标注：必须在每个部分开始前添加标注，格式如下：
+              - 【氛围铺垫】（开篇氛围部分）
+              - 【压制阶段】（压制阶段部分）
+              - 【绝境加深】（绝境加深部分）
+              - 【微小转机】（转机部分）
+              - 【反杀爆发】（反杀部分）
+
+            参考内容：{reference_content}
+            专业知识：{reference_profession}
+            要求：{prompt}"""
+    }
+
+    # 用户消息
+    user_message = {"role": "user", "content": prompt}
+
+    # 调用 API（只传一次，不存历史）
+    reply = call_qianwen_api([system_message, user_message])    
+    return clean_markdown(reply)
+
+# 主函数：一次对话后直接退出
+if __name__ == "__main__":
+    prompt = input("请输入你的问题: ").strip()
+    if prompt:
+        # 判断是否为武打场景需求
+        if any(keyword in prompt for keyword in ['武打', '战斗', '对决', '打斗', '比武']):
+            answer = generate_fight_scene_with_reversal(prompt)
+        else:
+            answer = chat_once(prompt)
+        
+        print("\n=== 创作结果 ===\n")
+        print(answer)
