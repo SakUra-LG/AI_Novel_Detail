@@ -39,6 +39,9 @@ def fix_punctuation_and_paragraphs(text):
     """
     if not text:
         return text
+
+    # 句末标点集合：同时把中英文句号/感叹号/问号都视为“有句子边界”
+    END_PUNCTS = set("。！？.!?")
     
     # 按段落分割
     paragraphs = text.split('\n')
@@ -50,8 +53,8 @@ def fix_punctuation_and_paragraphs(text):
             fixed_paragraphs.append('')
             continue
         
-        # 检测超长无标点段落（超过120字且没有句号）
-        if len(para) > 120 and '。' not in para:
+        # 检测超长无标点段落（超过120字且没有任何句末标点）
+        if len(para) > 120 and not any(p in para for p in END_PUNCTS):
             # 尝试在合适位置插入句号和换行
             # 在每35-40个字符后寻找合适的分割点（标点、空格等）
             fixed_para = ""
@@ -61,12 +64,12 @@ def fix_punctuation_and_paragraphs(text):
                 current_length += 1
                 # 每35个字符检查一次，如果遇到合适位置就插入句号
                 if current_length >= 35:
-                    # 检查下一个字符是否是标点或空格
+                    # 检查下一个字符是否是标点或换行/制表符（不再把普通空格当成最佳断点）
                     if i + 1 < len(para):
                         next_char = para[i + 1]
-                        if next_char in '，。！？；：\n\t ':
-                            # 如果当前没有句号，在合适位置插入
-                            if '。' not in fixed_para[-20:]:
+                        if next_char in '，。！？；：\n\t':
+                            # 如果当前附近没有句号或其他句末标点，在合适位置插入
+                            if not any(p in fixed_para[-20:] for p in END_PUNCTS):
                                 fixed_para += '。'
                                 fixed_para += '\n'
                                 current_length = 0
@@ -88,8 +91,8 @@ def fix_punctuation_and_paragraphs(text):
                     if i + 1 < len(sentences):
                         current_sentence += sentences[i + 1]
                     
-                    # 检查句子长度（超过35个汉字且没有逗号）
-                    if len(current_sentence) > 35 and '，' not in current_sentence and '。' not in current_sentence:
+                    # 检查句子长度（超过35个汉字且没有逗号或句号）
+                    if len(current_sentence) > 35 and '，' not in current_sentence and not any(p in current_sentence for p in END_PUNCTS):
                         # 在合适位置插入逗号（大约每20个字符）
                         chars = list(current_sentence)
                         new_chars = []
@@ -722,77 +725,48 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【幽默样本参考（必须学习其表达方式）】\n{humor_samples}" if humor_samples else ""
     
-    system_message = {
-        "role": "system",
-        "content": get_myth_system_prompt_base(rag_content) + humor_reference
-    }
-    
-    beats_text = ""
-    if act1_beats:
-        beats_list = []
-        for i, beat in enumerate(act1_beats, 1):
-            if isinstance(beat, dict):
-                beat_str = f"节拍卡{i}：\n"
-                beat_str += f"  场景目标：{beat.get('场景目标', '')}\n"
-                beat_str += f"  画面要素：{beat.get('画面要素', '')}\n"
-                beat_str += f"  情绪推动：{beat.get('情绪推动', '')}\n"
-                beat_str += f"  信息增量：{beat.get('信息增量', '')}\n"
-                beat_str += f"  禁止项：{beat.get('禁止项', '')}"
-                beats_list.append(beat_str)
-            else:
-                beats_list.append(f"{i}. {beat}")
-        beats_text = f"""
-第一幕节拍卡（必须按顺序完成所有节拍卡）：
-{chr(10).join(beats_list)}
-"""
-    
-    user_message = {
-        "role": "user",
-        "content": f"""
-【重要】这是第一幕，你只需要写第一幕的内容，不要写第二幕或第三幕的内容。
+    # 第一幕：按节拍卡逐小节生成，再拼接成完整第一幕
+    system_content = get_myth_system_prompt_base(rag_content) + humor_reference
 
-【核心标注：神话改写任务】这是神话改写任务，必须满足《哪吒之魔童降世》类似的幽默风格，必须参考《哪吒》的样本。
+    # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
+    if not act1_beats:
+        act1_beats = [{
+            "场景目标": act1_outline,
+            "画面要素": "",
+            "情绪推动": "",
+            "信息增量": "",
+            "禁止项": ""
+        }]
 
-总体大纲（仅供参考，了解完整故事线）：
-{overall_outline}
+    total_beats = len(act1_beats)
+    # 目标总字数 600~800，按节拍平均分配，预留一定浮动
+    target_min_total, target_max_total = 600, 800
+    base_min = max(100, target_min_total // total_beats - 30)
+    base_max = target_max_total // total_beats + 40
 
-第一幕大纲（必须严格按照此大纲写作）：
-{act1_outline}
-{beats_text}
-要求：
-- 600~800字
-- 【只写第一幕内容（绝对禁止违反）】：你只能写第一幕的内容，绝对禁止写到第二幕或第三幕的内容。第一幕只包含故事开端、世界设定、人物性格、初始状态，不能包含后续的冲突、行动、高潮、结局等内容。
-- 【节拍卡勾选机制（必须严格遵守）】：你必须按顺序完成本幕所有【节拍卡】。写作时每完成一张卡，立刻进入下一张。写完后你要在脑中进行"节拍卡勾选自检"：是否每张卡都出现了"画面要素"里的动作/物件？是否每张卡都产生"信息增量"，没有复述？是否每张卡都推动了"情绪变化"？但自检过程不得输出，只输出正文。
-- 【标点与段落约束（必须严格遵守）】：
-  * 必须使用中文标点（，。！？；：）且每句必须以标点结束
-  * 每段2-5句；每句建议15-45字，允许少量长句，但必须用逗号拆分
-  * 禁止"连续短行体"（连续3行每行少于12字视为违规）
-  * 禁止出现超过120字且没有句号的段落
-  * 段落之间最多空一行，禁止大片空行
-- 强化人物性格吐槽
-- 【幽默要求（必须严格遵守）】：必须包含至少1-2处幽默，参考上方提供的幽默样本，学习其表达方式。幽默类型包括：1）压力下的嘴硬或轻描淡写式表达；2）自嘲式幽默；3）史诗场景+生活化感受。每处幽默应短而自然，1-2句话即可。幽默必须有情绪触发点：压力 → 反应 → 嘴硬，禁止断裂式幽默（写着写着突然插入一句现代吐槽）。
-- 【电影节奏要求（必须严格遵守）】：句子应以短句为主，避免连续超过40字的复合句，避免长段落无标点连写。每段应有明显节奏停顿，有呼吸感，有镜头感。禁止论文式连写（如"循着手部感应之力朝前方摸索而去果然触及一件古老物件那就是传说中最古老的兵器之一"这种超长无停顿句子）。
-- 保持电影感
-- 必须采用分幕结构，明确标注"第一幕"标题（如"第一幕 开启新纪元之梦"）
-- 必须使用正确的标点符号，特别是逗号（，）和句号（。）
-- 绝对禁止出现系统提示、道歉、回顾、统计、空行、表情符号、奇怪格式符号等
-- 只输出第一幕的正文内容，不要任何元文本
+    segments = []
+    accumulated_text = ""
 
-用户需求：{prompt}
-        """
-    }
-    
-    reply = call_qianwen_api(
-        [system_message, user_message],
-        temperature=0.9,
-        top_p=0.9,
-        repetition_penalty=1.35,
-        max_tokens=1500
-    )
-    result = clean_markdown(reply)
-    # 应用后处理：修复标点和段落
-    result = fix_punctuation_and_paragraphs(result)
-    return result
+    for idx, beat in enumerate(act1_beats, 1):
+        segment = generate_segment_for_beat(
+            act_name="第一幕",
+            beat_index=idx,
+            total_beats=total_beats,
+            beat=beat,
+            overall_outline=overall_outline,
+            act_outline=act1_outline,
+            prev_text=accumulated_text,
+            prompt=prompt,
+            system_content=system_content,
+            target_min_len=base_min,
+            target_max_len=base_max,
+            act_id="act1"
+        )
+        segments.append(segment)
+        accumulated_text = (accumulated_text + "\n" + segment).strip() if accumulated_text else segment
+
+    # 简单拼接为第一幕全文
+    return "\n\n".join(segments)
 
 
 def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
@@ -803,114 +777,47 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【幽默样本参考（必须学习其表达方式）】\n{humor_samples}" if humor_samples else ""
     
-    system_message = {
-        "role": "system",
-        "content": get_myth_system_prompt_base(None) + humor_reference  # 第二幕不使用RAG，但使用幽默样本
-    }
-    
-    beats_text = ""
-    if act2_beats:
-        beats_list = []
-        for i, beat in enumerate(act2_beats, 1):
-            if isinstance(beat, dict):
-                beat_str = f"节拍卡{i}：\n"
-                beat_str += f"  场景目标：{beat.get('场景目标', '')}\n"
-                beat_str += f"  画面要素：{beat.get('画面要素', '')}\n"
-                beat_str += f"  情绪推动：{beat.get('情绪推动', '')}\n"
-                beat_str += f"  信息增量：{beat.get('信息增量', '')}\n"
-                beat_str += f"  禁止项：{beat.get('禁止项', '')}"
-                beats_list.append(beat_str)
-            else:
-                beats_list.append(f"{i}. {beat}")
-        beats_text = f"""
-第二幕节拍卡（必须按顺序完成所有节拍卡）：
-{chr(10).join(beats_list)}
-"""
-    
-    user_message = {
-        "role": "user",
-        "content": f"""
-【重要】这是第二幕，你只需要写第二幕的内容，不要重复第一幕或提前写第三幕的内容。
+    # 第二幕：按节拍卡逐小节生成，再拼接成完整第二幕
+    system_content = get_myth_system_prompt_base(None) + humor_reference
 
-【核心标注：神话改写任务】这是神话改写任务，必须满足《哪吒之魔童降世》类似的幽默风格，必须参考《哪吒》的样本。这是创世叙事，不是战斗叙事。
+    if not act2_beats:
+        act2_beats = [{
+            "场景目标": act2_outline,
+            "画面要素": "",
+            "情绪推动": "",
+            "信息增量": "",
+            "禁止项": ""
+        }]
 
-已写第一幕：
-{act1}
+    total_beats = len(act2_beats)
+    # 目标总字数 900~1100，按节拍平均分配，预留浮动
+    target_min_total, target_max_total = 900, 1100
+    base_min = max(130, target_min_total // total_beats - 40)
+    base_max = target_max_total // total_beats + 50
 
-总体大纲（仅供参考，了解完整故事线）：
-{overall_outline}
+    segments = []
+    # 将第一幕全文作为"更早前文"，帮助第二幕承接，但在单节生成时只截取尾部片段
+    accumulated_text = act1.strip()
 
-第二幕大纲（必须严格按照此大纲写作）：
-{act2_outline}
-{beats_text}
-要求：
-- 900~1100字（必须严格遵守字数要求，不能超过1100字）
-- 【只写第二幕内容（绝对禁止违反）】：你只能写第二幕的内容，绝对禁止重复第一幕的内容，也绝对禁止提前写第三幕的内容。第二幕只包含核心冲突、高强度行动、关键转折，不能包含第一幕的开端设定，也不能包含第三幕的高潮和结局。
-- 【节拍卡勾选机制（必须严格遵守）】：你必须按顺序完成本幕所有【节拍卡】。写作时每完成一张卡，立刻进入下一张。写完后你要在脑中进行"节拍卡勾选自检"：是否每张卡都出现了"画面要素"里的动作/物件？是否每张卡都产生"信息增量"，没有复述？是否每张卡都推动了"情绪变化"？但自检过程不得输出，只输出正文。
-- 【标点与段落约束（必须严格遵守）】：
-  * 必须使用中文标点（，。！？；：）且每句必须以标点结束
-  * 每段2-5句；每句建议15-45字，允许少量长句，但必须用逗号拆分
-  * 禁止"连续短行体"（连续3行每行少于12字视为违规）
-  * 禁止出现超过120字且没有句号的段落
-  * 段落之间最多空一行，禁止大片空行
+    for idx, beat in enumerate(act2_beats, 1):
+        segment = generate_segment_for_beat(
+            act_name="第二幕",
+            beat_index=idx,
+            total_beats=total_beats,
+            beat=beat,
+            overall_outline=overall_outline,
+            act_outline=act2_outline,
+            prev_text=accumulated_text,
+            prompt=prompt,
+            system_content=system_content,
+            target_min_len=base_min,
+            target_max_len=base_max,
+            act_id="act2"
+        )
+        segments.append(segment)
+        accumulated_text = (accumulated_text + "\n" + segment).strip()
 
-- 【第二幕核心结构约束（绝对禁止违反）】：
-  【目标锁定】第二幕的所有动作必须服务于唯一目标：劈开混沌（或对应神话的核心目标，如补天、射日等）。绝对禁止写成"与某种力量战斗"或"对抗某个对手"。这是创世叙事，不是战斗叙事。
-  
-  【冲突类型改造（绝对禁止违反）】：
-  - 错误写法：某种力量攻击主角、对方发动三次攻击、对方更强、闪电袭击
-  - 正确方向：世界结构产生反压、混沌密度三次增强、空间张力提升、裂隙内压力回流
-  - 所有威胁必须来自"世界机制"或"物理阻力"，而不是"对手"或"敌人"
-  - 禁止出现"攻击我"、"对方"、"对手"、"敌人"等战斗叙事词汇
-  - 必须写成"人与世界规则的对抗"、"人与秩序结构的对抗"、"人与物理阻力的对抗"
-  
-  【动作阶段递进（必须严格遵守）】：
-  第二幕的动作必须按以下阶段递进，而不是"一斧就裂"：
-  1️⃣ 尝试突破：第一次尝试，遇到阻力
-  2️⃣ 阻力显现：世界结构产生反压，动作受阻
-  3️⃣ 结构反弹：混沌密度增强，空间张力提升，动作被反弹
-  4️⃣ 再次发力：调整策略，增加力量，再次尝试
-  5️⃣ 临界崩裂：结构开始崩裂，清浊开始分离
-  6️⃣ 分离不稳：分离过程中出现不稳定，需要持续发力
-  每个阶段都要详细描写，不能跳过或快速带过。
-  
-  【动作功能锚点（绝对禁止违反）】：
-  每个动作细节都必须问："这一步让'开天'（或对应目标）前进了吗？"
-  - 错误：旋转漩涡很好看（没有功能）
-  - 正确：漩涡导致裂隙闭合，使清浊重新混合，增加结构压力（有功能，影响开天进度）
-  - 每个视觉效果、每个动作都必须明确其对"开天进度"的影响
-  - 禁止写"好看但无用"的细节，所有细节必须服务于主线目标
-  
-  【禁止战斗叙事（绝对禁止违反）】：
-  - 绝对禁止出现"攻击"、"躲避"、"反击"、"对方更强"、"近战压制"等战斗叙事元素
-  - 绝对禁止写成"对抗叙事"，必须写成"创世叙事"
-  - 绝对禁止出现"对手"、"敌人"、"攻击者"等角色
-  - 所有阻力必须来自世界本身的结构和规则，而不是某个对手
-
-- 【禁止重复和循环（绝对禁止）】：绝对禁止重复相同的内容、句子或段落。绝对禁止陷入循环生成。绝对禁止重复第一幕已经写过的内容。每个句子、每个段落都必须推进剧情，不能重复之前已经写过的内容。如果发现开始重复，必须立即结束，不要继续生成。
-- 【承接要求（必须严格遵守）】：第二幕必须承接第一幕，在第一幕的基础上继续发展，但不能重复第一幕的内容。要基于第一幕的设定和状态，推进到第二幕的冲突和行动。
-- 【角色规则（条件禁止）】：默认不新增重要角色；若需要出现新角色/新存在，必须满足：1）在本幕节拍卡里有"由来/功能/与主线关系"的交代；2）只承担主线功能，不开启新支线；3）不得在第三幕突然出现并改变结局走向。若无法满足以上条件，则禁止新增角色。
-- 【幽默要求（必须严格遵守）】：必须包含至少1-2处幽默，参考上方提供的幽默样本，学习其表达方式。幽默类型包括：1）压力下的嘴硬或轻描淡写式表达；2）自嘲式幽默；3）史诗场景+生活化感受。每处幽默应短而自然，1-2句话即可。幽默必须有情绪触发点：压力 → 反应 → 嘴硬，禁止断裂式幽默（写着写着突然插入一句现代吐槽）。
-- 【电影节奏要求（必须严格遵守）】：句子应以短句为主，避免连续超过40字的复合句，避免长段落无标点连写。每段应有明显节奏停顿，有呼吸感，有镜头感。禁止论文式连写（如"循着手部感应之力朝前方摸索而去果然触及一件古老物件那就是传说中最古老的兵器之一"这种超长无停顿句子）。
-- 必须采用分幕结构，明确标注"第二幕"标题（如"第二幕 开天辟地"）
-- 必须使用正确的标点符号，特别是逗号（，）和句号（。）
-- 只输出第二幕的正文内容，不要任何元文本、注释、提示
-
-用户需求：{prompt}
-        """
-    }
-    
-    reply = call_qianwen_api(
-        [system_message, user_message],
-        temperature=0.9,
-        top_p=0.9,
-        repetition_penalty=1.35,
-        max_tokens=2000
-    )
-    result = clean_markdown(reply)
-    # 应用后处理：修复标点和段落
-    result = fix_punctuation_and_paragraphs(result)
-    return result
+    return "\n\n".join(segments)
 
 
 def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
@@ -920,88 +827,357 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
     # 提取幽默样本
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【幽默样本参考（必须学习其表达方式）】\n{humor_samples}" if humor_samples else ""
-    
+
+    # 第三幕：按节拍卡逐小节生成，再拼接成完整第三幕
+    system_content = get_myth_system_prompt_base(None) + humor_reference
+
+    # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
+    if not act3_beats:
+        act3_beats = [{
+            "场景目标": act3_outline,
+            "画面要素": "",
+            "情绪推动": "",
+            "信息增量": "",
+            "禁止项": ""
+        }]
+
+    total_beats = len(act3_beats)
+    # 目标总字数 600~800，按节拍平均分配，预留一定浮动
+    target_min_total, target_max_total = 600, 800
+    base_min = max(120, target_min_total // total_beats - 30)
+    base_max = target_max_total // total_beats + 40
+
+    segments = []
+    # 将第二幕全文作为"更早前文"，帮助第三幕承接，在单节生成时只截取尾部片段
+    accumulated_text = act2.strip()
+
+    for idx, beat in enumerate(act3_beats, 1):
+        segment = generate_segment_for_beat(
+            act_name="第三幕",
+            beat_index=idx,
+            total_beats=total_beats,
+            beat=beat,
+            overall_outline=overall_outline,
+            act_outline=act3_outline,
+            prev_text=accumulated_text,
+            prompt=prompt,
+            system_content=system_content,
+            target_min_len=base_min,
+            target_max_len=base_max,
+            act_id="act3"
+        )
+        segments.append(segment)
+        accumulated_text = (accumulated_text + "\n" + segment).strip()
+
+    final_act3 = "\n\n".join(segments)
+
+    # 仍保留一次整体质量检查（长度/繁体/镜头括号等），仅做告警，不再整体重写
+    if not validate_act3(final_act3):
+        print("警告：第三幕整体质量校验未通过（长度/格式/繁体检测），但已按节拍卡逐段生成。")
+
+    return final_act3
+
+
+def validate_act3(script: str) -> bool:
+    """
+    第三幕专用质量校验：
+    - 字数/字符数 > 1100 判失败（目标 600~800 字）
+    - 含常见繁体字判失败（粗略检测）
+    - 含括号镜头/元文本关键字判失败
+    - 出现连续多行仅由标点/空格组成的“诗歌体碎行”判失败
+    """
+    if not script:
+        return False
+
+    # 1. 粗略长度控制：明显超长直接判失败
+    if len(script) > 1100:
+        return False
+
+    # 2. 粗略繁体字检测（常见繁体字集合，命中任意一个就视为不合格）
+    trad_chars = set("萬與專業東絲兩嚴個豐臨為麗舉樂鄉書買亂爭於雲亞產畢實寧眾優會傢價億債傷傾後門風體們發戰愛國頭聲靜場這顏顯點")
+    if any(ch in trad_chars for ch in script):
+        return False
+
+    # 3. 括号镜头/元文本关键字
+    forbidden_meta_phrases = [
+        "（最终画面", "（最終畫面",
+        "（镜头", "（鏡頭",
+        "（远景", "（遠景",
+        "遠鏡頭", "远镜头",
+        "镜头切", "鏡頭切",
+    ]
+    if any(phrase in script for phrase in forbidden_meta_phrases):
+        return False
+
+    # 4. 连续多行只有标点/空格（诗歌体碎行）
+    lines = script.splitlines()
+    punct_chars = set("，。！？；：、…—-·「」『』（）()【】[]《》\"' \t ")
+    pure_punct_run = 0
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            pure_punct_run = 0
+            continue
+        if all(ch in punct_chars for ch in stripped):
+            pure_punct_run += 1
+            if pure_punct_run >= 3:
+                return False
+        else:
+            pure_punct_run = 0
+
+    return True
+
+
+def strip_beat_markers(text: str) -> str:
+    """
+    清理正文中的节拍标记【B1】【B2】……，供最终输出使用
+    """
+    if not text:
+        return text
+    return re.sub(r'【B\d+】\s*', '', text)
+
+
+def _extract_keywords(text: str) -> list:
+    """
+    将节拍卡字段（画面要素/场景目标/情绪推动等）切成若干关键短语，用于简单命中校验
+    """
+    if not text:
+        return []
+    parts = re.split(r'[，,。．；;、/｜|\s]', text)
+    keywords = []
+    for p in parts:
+        p = p.strip()
+        if len(p) >= 2:
+            keywords.append(p)
+    return keywords
+
+
+def validate_single_beat_segment(seg: str, beat: dict, min_len: int = 60) -> bool:
+    """
+    针对【单张节拍卡】的轻量级校验：
+    - 文本非空，且长度不能太短
+    - 命中当前节拍卡中至少一类关键词（画面要素 / 场景目标 / 情绪推动）
+    - 不包含"禁止项"里的关键词
+    """
+    if not seg:
+        return False
+    seg = seg.strip()
+    if len(seg) < min_len:
+        return False
+
+    visuals = _extract_keywords(beat.get('画面要素', '') or '')
+    goals = _extract_keywords(beat.get('场景目标', '') or '')
+    emotions = _extract_keywords(beat.get('情绪推动', '') or '')
+
+    has_any_keywords = bool(visuals or goals or emotions)
+    if has_any_keywords:
+        hit = any(k in seg for k in visuals) or any(k in seg for k in goals) or any(k in seg for k in emotions)
+        if not hit:
+            return False
+
+    bans_raw = beat.get('禁止项', '') or ''
+    if bans_raw:
+        raw_bans = re.split(r'[，,。．；;、/]', bans_raw)
+        ban_keywords = []
+        for b in raw_bans:
+            b = b.strip()
+            b = re.sub(r'^(不能|不准|不要|禁止|别|不许|不可|不让)\s*', '', b)
+            if len(b) >= 2:
+                ban_keywords.append(b)
+        if any(b in seg for b in ban_keywords):
+            return False
+
+    return True
+
+
+def generate_segment_for_beat(
+    act_name: str,
+    beat_index: int,
+    total_beats: int,
+    beat: dict,
+    overall_outline: str,
+    act_outline: str,
+    prev_text: str,
+    prompt: str,
+    system_content: str,
+    target_min_len: int,
+    target_max_len: int,
+    act_id: str = ""
+):
+    """
+    通用：按【单张节拍卡】生成对应的一小节正文，并做轻量校验，返回通过校验的文本（或最后一次结果）。
+    """
     system_message = {
         "role": "system",
-        "content": get_myth_system_prompt_base(None) + humor_reference  # 第三幕不使用RAG，但使用幽默样本
+        "content": system_content
     }
-    
-    beats_text = ""
-    if act3_beats:
-        beats_list = []
-        for i, beat in enumerate(act3_beats, 1):
-            if isinstance(beat, dict):
-                beat_str = f"节拍卡{i}：\n"
-                beat_str += f"  场景目标：{beat.get('场景目标', '')}\n"
-                beat_str += f"  画面要素：{beat.get('画面要素', '')}\n"
-                beat_str += f"  情绪推动：{beat.get('情绪推动', '')}\n"
-                beat_str += f"  信息增量：{beat.get('信息增量', '')}\n"
-                beat_str += f"  禁止项：{beat.get('禁止项', '')}"
-                beats_list.append(beat_str)
-            else:
-                beats_list.append(f"{i}. {beat}")
-        beats_text = f"""
-第三幕节拍卡（必须按顺序完成所有节拍卡）：
-{chr(10).join(beats_list)}
+
+    # 简要前文摘要：只保留末尾一小段，帮助承接，不让模型复述全部内容
+    prev_summary = ""
+    if prev_text:
+        tail = prev_text.strip()[-400:]
+        prev_summary = tail
+
+    special_constraints = ""
+    if act_id == "act2":
+        special_constraints = """
+【第二幕创世叙事约束】
+- 所有阻力必须来自世界结构、物理阻力或秩序规则，不能写成"有人在攻击主角"的战斗。
+- 禁止出现"对手""敌人""攻击者""反击""近战压制"等战斗叙事词汇。
+- 每个动作都要回答：这一步有没有让核心目标（如开天/补天/射日）往前推进？
 """
-    
-    user_message = {
-        "role": "user",
-        "content": f"""
-【重要】这是第三幕，你只需要写第三幕的内容，不要重复第一幕或第二幕的内容。
+    elif act_id == "act3":
+        special_constraints = """
+【第三幕收束约束】
+- 必须围绕"选择与代价-世界后果-收束画面"这一结局三件套推进，不要开启新支线。
+- 全幕只能有一次很克制的轻描淡写式幽默，不能削弱牺牲感和庄重感。
+"""
 
-【核心标注：神话改写任务】这是神话改写任务，必须满足《哪吒之魔童降世》类似的幽默风格，必须参考《哪吒》的样本。
+    user_content = f"""
+你正在创作《{prompt}》的{act_name}，现在要写本幕第 {beat_index}/{total_beats} 张节拍卡对应的一小节正文。
 
-已写第二幕：
-{act2}
-
-总体大纲（仅供参考，了解完整故事线）：
+【总体大纲（仅供参考，用于把握全局走向）】
 {overall_outline}
 
-第三幕大纲（必须严格按照此大纲写作）：
-{act3_outline}
-{beats_text}
-必须：
-- 600~800字
-- 【只写第三幕内容（绝对禁止违反）】：你只能写第三幕的内容，绝对禁止重复第一幕或第二幕的内容。第三幕只包含高潮、收尾、结局，不能包含前两幕的开端、设定、冲突、行动等内容。
-- 【节拍卡勾选机制（必须严格遵守）】：你必须按顺序完成本幕所有【节拍卡】。写作时每完成一张卡，立刻进入下一张。写完后你要在脑中进行"节拍卡勾选自检"：是否每张卡都出现了"画面要素"里的动作/物件？是否每张卡都产生"信息增量"，没有复述？是否每张卡都推动了"情绪变化"？但自检过程不得输出，只输出正文。
-- 【结局三件套硬约束（必须严格遵守）】：第三幕必须包含并按顺序完成"结局三件套"：
-  1. 选择与代价：主角必须做出一个不可逆选择，并付出明确代价（体力/名誉/失去/牺牲/承担职责等）
-  2. 世界后果：这个选择如何改变世界格局或秩序（至少写出2个具体变化画面）
-  3. 收束镜头：用一个可拍摄的"最终画面"收尾（静止/远景/特写/回声/余韵），并回扣主题一句（不说教、不鸡汤）
-  禁止：第三幕引入全新支线、全新重要角色、与主线无关的日常琐事来凑字数
-- 【标点与段落约束（必须严格遵守）】：
-  * 必须使用中文标点（，。！？；：）且每句必须以标点结束
-  * 每段2-5句；每句建议15-45字，允许少量长句，但必须用逗号拆分
-  * 禁止"连续短行体"（连续3行每行少于12字视为违规）
-  * 禁止出现超过120字且没有句号的段落
-  * 段落之间最多空一行，禁止大片空行
-- 写到明确结局
-- 收束主题
-- 【承接要求（必须严格遵守）】：第三幕必须承接第二幕，在第二幕的基础上继续发展，但不能重复第二幕的内容。要基于第二幕的状态，推进到第三幕的高潮和结局。
-- 【角色规则（条件禁止）】：默认不新增重要角色；若需要出现新角色/新存在，必须满足：1）在本幕节拍卡里有"由来/功能/与主线关系"的交代；2）只承担主线功能，不开启新支线；3）不得在第三幕突然出现并改变结局走向。若无法满足以上条件，则禁止新增角色。第三幕必须围绕核心事件链条完成，禁止添加无关支线或新角色。
-- 【第三幕风格要求（必须严格遵守）】：第三幕应偏庄重收束，情绪本该高潮，必须强调牺牲感、世界稳定、高空视角、宇宙级镜头。幽默只能轻微出现一次（最多一处），并且不得削弱牺牲感。绝对禁止出现"神仙大佬给奖励"等削弱牺牲感的设定，必须保持庄重、悲壮、史诗级的收束感。
-- 【幽默要求（必须严格遵守）】：第三幕幽默只能轻微出现一次（最多一处），必须有情绪触发点：压力 → 反应 → 嘴硬，禁止断裂式幽默。幽默不得削弱牺牲感，必须与庄重收束的基调协调。
-- 【电影节奏要求（必须严格遵守）】：句子应以短句为主，避免连续超过40字的复合句，避免长段落无标点连写。每段应有明显节奏停顿，有呼吸感，有镜头感。禁止论文式连写（如"循着手部感应之力朝前方摸索而去果然触及一件古老物件那就是传说中最古老的兵器之一"这种超长无停顿句子）。
-- 必须采用分幕结构，明确标注"第三幕"标题（如"第三幕 天地初成"）
-- 必须使用正确的标点符号，特别是逗号（，）和句号（。）
-- 只输出第三幕的正文内容，不要任何元文本、注释、提示
+【本幕大纲（必须对齐）】
+{act_outline}
 
-用户需求：{prompt}
-        """
+【已完成前文的简要摘取】（如果为空说明这是本幕第一小节，仅用于承接，不要复述）
+{prev_summary if prev_summary else "（无前文，这是本幕的第一小节）"}
+
+【当前节拍卡写作任务（必须完成）】
+- 场景目标：{beat.get('场景目标', '')}
+- 画面要素：{beat.get('画面要素', '')}
+- 情绪推动：{beat.get('情绪推动', '')}
+- 信息增量：{beat.get('信息增量', '')}
+- 禁止项：{beat.get('禁止项', '')}
+
+{special_constraints}
+
+【写作硬性要求】
+1. 只写本节对应的一小段剧情，不要提前写后续节拍的情节，也不要回头复述已经写过的内容。
+2. 正文中必须自然出现上方"画面要素"中至少 1-2 个具体画面或动作（可以改写，不要生搬硬套短语）。
+3. 严格避免"禁止项"里的内容和表达，一旦要写到类似内容，必须换一种不违背规则的方式。
+4. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，分 1-2 个自然段即可。
+5. 全文使用简体中文，不要出现列表、数字编号、说明文字、"节拍卡"字样或任何元提示。
+6. 语气、世界观、人物设定要与前文保持连续，像在同一个长篇故事里自然接着往下写。
+7. 只输出这一小节的【纯正文】，不要添加标题、小结或任何额外说明。
+"""
+
+    user_message = {
+        "role": "user",
+        "content": user_content
     }
-    
-    reply = call_qianwen_api(
-        [system_message, user_message],
-        temperature=0.9,
-        top_p=0.9,
-        repetition_penalty=1.35,
-        max_tokens=1500
-    )
-    result = clean_markdown(reply)
-    # 应用后处理：修复标点和段落
-    result = fix_punctuation_and_paragraphs(result)
-    return result
+
+    def _call_and_postprocess(temp: float):
+        reply_local = call_qianwen_api(
+            [system_message, user_message],
+            temperature=temp,
+            top_p=0.9,
+            repetition_penalty=1.35,
+            max_tokens=800
+        )
+        cleaned = clean_markdown(reply_local)
+        return fix_punctuation_and_paragraphs(cleaned)
+
+    best_result = None
+    for temp in (0.9, 0.8):
+        seg = _call_and_postprocess(temp)
+        best_result = seg
+        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2)):
+            return seg.strip()
+
+    # 多次尝试仍未通过节拍校验时，返回最后一次结果（尽量不阻塞整体流程）
+    return (best_result or "").strip()
+
+def _extract_beat_segments_by_marker(script: str, expected_count: int):
+    """
+    根据【B1】【B2】…标记切分每一幕的内容段落，返回按节拍顺序排列的文本列表。
+    如果标记缺失、乱序或数量不足，则返回 None。
+    """
+    if not script or expected_count <= 0:
+        return None
+
+    pattern = re.compile(r'【B(\d+)】')
+    matches = list(pattern.finditer(script))
+    if not matches:
+        return None
+
+    # 收集每个标记对应的文本片段
+    segments_map = {}
+    for idx, m in enumerate(matches):
+        beat_index = int(m.group(1))
+        start = m.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(script)
+        seg = script[start:end].strip()
+        if not seg:
+            continue
+        # 只保留第一次出现的该编号片段，避免重复覆盖
+        if 1 <= beat_index <= expected_count and beat_index not in segments_map:
+            segments_map[beat_index] = seg
+
+    # 必须保证从1到expected_count都有对应片段
+    if any(i not in segments_map for i in range(1, expected_count + 1)):
+        return None
+
+    return [segments_map[i] for i in range(1, expected_count + 1)]
+
+
+def validate_act_beats(script: str, beats: list) -> bool:
+    """
+    通用节拍卡对齐校验（适用于三幕）：
+    - 检查是否存在按顺序的【B1】【B2】…标记，且数量与节拍卡数量一致
+    - 每个节拍对应片段需至少命中该卡"画面要素"中的1-2个关键词
+    - 如片段中出现该卡"禁止项"中的关键词，则视为失败
+    """
+    if not beats:
+        return True
+
+    expected_count = len(beats)
+    segments = _extract_beat_segments_by_marker(script, expected_count)
+    if not segments:
+        return False
+
+    for idx, beat in enumerate(beats):
+        seg = segments[idx]
+        if not isinstance(beat, dict):
+            # 旧格式：只要片段非空即可
+            if not seg.strip():
+                return False
+            continue
+
+        # A. 画面要素命中检查：从"画面要素"里切出若干关键短语，只要命中至少一个即可
+        visuals = beat.get('画面要素', '') or ''
+        visual_keywords = []
+        if visuals:
+            # 按常见标点/分隔符切分
+            raw_parts = re.split(r'[，,。．；;、/｜|]', visuals)
+            for p in raw_parts:
+                p = p.strip()
+                # 过滤掉过短或纯符号的片段
+                if len(p) >= 2:
+                    visual_keywords.append(p)
+
+        if visual_keywords:
+            if not any(k in seg for k in visual_keywords):
+                return False
+
+        # B. 禁止项违规则判失败：提取禁止项中的关键短语，若出现在片段中则失败
+        bans = beat.get('禁止项', '') or ''
+        if bans:
+            raw_bans = re.split(r'[，,。．；;、/]', bans)
+            ban_keywords = []
+            for b in raw_bans:
+                b = b.strip()
+                # 去掉常见否定前缀，保留核心动作/名词
+                b = re.sub(r'^(不能|不准|不要|禁止|别|不许|不可|不让)\s*', '', b)
+                if len(b) >= 2:
+                    ban_keywords.append(b)
+
+            if any(b in seg for b in ban_keywords):
+                return False
+
+    return True
 
 
 def validate_script(script):
