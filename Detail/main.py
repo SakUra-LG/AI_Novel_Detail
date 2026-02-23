@@ -1,5 +1,6 @@
 import re
 import time
+import os
 import dashscope as dashscope
 from config import API_Key_QW
 from Search_content import *
@@ -435,8 +436,16 @@ def get_humor_samples():
         import json
         import random
         
+        # 获取当前脚本所在目录，构建知识库文件路径
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(current_dir, 'knowledgeBase', 'themes_Content.json')
+        
+        # 如果文件不存在，尝试相对路径
+        if not os.path.exists(json_path):
+            json_path = 'knowledgeBase/themes_Content.json'
+        
         # 加载知识库
-        with open('knowledgeBase/themes_Content.json', 'r', encoding='utf-8') as f:
+        with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             articles = data.get("articles", [])
         
@@ -444,7 +453,10 @@ def get_humor_samples():
         humor_samples = [a for a in articles if "神话重写·哪吒风格" in a.get("theme", "")]
         
         if not humor_samples:
+            print("警告：未找到'神话重写·哪吒风格'的样本，幽默元素可能缺失")
             return None
+        
+        print(f"找到 {len(humor_samples)} 个神话重写·哪吒风格样本")
         
         # 随机选择3-5个样本
         num_samples = min(random.randint(3, 5), len(humor_samples))
@@ -453,9 +465,15 @@ def get_humor_samples():
         # 组合成参考文本
         sample_text = "\n\n".join([f"样本{i+1}：{s['content']}" for i, s in enumerate(selected_samples)])
         
+        print(f"已选择 {num_samples} 个幽默样本用于参考")
         return sample_text
+    except FileNotFoundError:
+        print(f"警告：未找到知识库文件，幽默样本无法加载。请确保 knowledgeBase/themes_Content.json 文件存在。")
+        return None
     except Exception as e:
         print(f"提取幽默样本时出错: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
