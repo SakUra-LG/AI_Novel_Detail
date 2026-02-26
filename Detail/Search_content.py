@@ -54,12 +54,15 @@ def load_knowledge_base():
 
 
 def find_most_similar(query_vector, theme_vectors, articles):
-    """查找最相似的文章段落"""
+    """
+    查找最相似的文章段落
+    默认返回 top_k 条结果（后续再做过滤或随机选择）
+    """
     similarities = cosine_similarity(query_vector, theme_vectors)[0]
     top_indices = np.argsort(similarities)[::-1]  # 按相似度降序排列
 
     results = []
-    for idx in top_indices[:3]:  # 返回前3个
+    for idx in top_indices:  # 先全部排好，具体取多少由调用方控制
         article = articles[idx]
         results.append({
             "similarity": float(similarities[idx]),
@@ -73,7 +76,12 @@ def find_most_similar(query_vector, theme_vectors, articles):
 import random
 
 def searchresult_content(user_input):
-    """返回相似度最高的前5个段落里随机选择一个"""
+    """
+    返回与当前输入最相似的一条参考内容：
+    - 先取 top_k 条相似结果
+    - 优先从主题包含“神话重写·哪吒风格”的结果中随机抽取
+    - 若没有该主题，则从前若干条里退化随机
+    """
     # 加载知识库
     theme_vectors, articles = load_knowledge_base()
     if theme_vectors is None:
@@ -89,15 +97,29 @@ def searchresult_content(user_input):
             print("向量化失败")
             return None
 
-        # 查找相似主题
-        results = find_most_similar(query_vector, theme_vectors, articles)
+        # 查找相似主题（先拿到排好序的完整结果，再在前 top_k 里做选择）
+        all_results = find_most_similar(query_vector, theme_vectors, articles)
+        if not all_results:
+            print("未找到匹配结果")
+            return None
+
+        # 配置：检索覆盖面（前多少条里做筛选）
+        top_k = min(15, len(all_results))
+        results = all_results[:top_k]
         if not results:
             print("未找到匹配结果")
             return None
 
-        # 取前5个（如果不足5个就取全部），然后随机选一个
-        top_k = results[:5]
-        chosen = random.choice(top_k)
+        # ① 优先选择“神话重写·哪吒风格”样本，保证幽默风格更稳定
+        myth_humor = [r for r in results if "神话重写·哪吒风格" in str(r.get("theme", ""))]
+        if myth_humor:
+            pool = myth_humor
+        else:
+            # ② 如果没有专门的神话幽默样本，就从前8条里退化随机
+            fallback_k = min(8, len(results))
+            pool = results[:fallback_k]
+
+        chosen = random.choice(pool)
 
         print("********************************************************")
         print(f"[{chosen.get('theme')}] {chosen.get('content', '无内容')}")
