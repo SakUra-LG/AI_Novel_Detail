@@ -511,6 +511,69 @@ def get_humor_samples():
         return None
 
 
+def get_punchline_examples():
+    """
+    从 knowledgeBase/humor_punchline_examples.txt 加载人为挑选的「让人笑出来」级对白示例。
+    文件格式：以 --- 分隔每段示例，# 开头的行忽略。用于方案二：精选少样本注入提示词。
+    """
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(current_dir, 'knowledgeBase', 'humor_punchline_examples.txt')
+        if not os.path.exists(path):
+            path = 'knowledgeBase/humor_punchline_examples.txt'
+        if not os.path.exists(path):
+            return ""
+        with open(path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        # 去掉 # 开头的行，再按 --- 分割成块
+        lines = [line for line in raw.splitlines() if not line.strip().startswith('#')]
+        text = '\n'.join(lines)
+        blocks = [b.strip() for b in text.split('---') if b.strip()]
+        if not blocks:
+            return ""
+        result = "\n\n".join(blocks)
+        print(f"已加载 {len(blocks)} 条「让人笑出来」对白示例")
+        return result
+    except Exception as e:
+        print(f"加载 humor_punchline_examples.txt 时出错: {e}")
+        return ""
+
+
+def generate_punchline_dialogues_for_beat(beat, overall_outline, theme_prompt, punchline_examples_text):
+    """
+    方案一·第一阶段：针对当前节拍专门生成 2-3 组「让人笑出来」级的互怼对白。
+    若该节拍属于关键转折/牺牲/收束等庄重场景，则跳过并返回空字符串。
+    """
+    goal = (beat.get('场景目标') or '')
+    if any(kw in goal for kw in ['关键转折', '重大抉择', '牺牲代价', '收束画面', '终极使命完成']):
+        return ""
+    scene = goal + "；" + (beat.get('画面要素') or '')
+    examples_block = f"\n【参考以下示例的节奏与梗的密度】\n{punchline_examples_text}" if punchline_examples_text else ""
+    system_msg = {
+        "role": "system",
+        "content": "你是喜剧对白写手，只输出互怼/拆台对白，不写叙述、不写动作描写。对白要干脆、有梗，让读者读到能笑出来。主角与固定拆台副角（如小徒弟、随从等，若故事中有名字请使用）一来一往，拆台接话要一句到位。"
+    }
+    user_msg = {
+        "role": "user",
+        "content": f"""针对以下节拍情境，只输出 2-3 组互怼对白。每组格式：主角说一句，固定拆台副角接一句拆台（可用「主角：」「小徒弟：」等标注）。要求干脆、有梗、让人读能笑出来。不要写任何叙述或说明。
+
+故事主题：{theme_prompt}
+本小节情境：{scene}
+{examples_block}
+
+请直接输出 2-3 组对白，每组换行，不要编号、不要解释。"""
+    }
+    reply = call_qianwen_api(
+        [system_msg, user_msg],
+        temperature=0.95,
+        top_p=0.9,
+        repetition_penalty=1.2,
+        max_tokens=400
+    )
+    cleaned = clean_markdown(reply or "").strip()
+    return cleaned if cleaned else ""
+
+
 def generate_outline(theme, rag_content):
     """
     生成总体大纲（完整故事线）
@@ -762,6 +825,9 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     # 第一幕：按节拍卡逐小节生成，再拼接成完整第一幕
     system_content = get_myth_system_prompt_base(rag_content) + humor_reference
 
+    # 方案二：加载人为挑选的「让人笑出来」对白示例，每小节注入
+    punchline_examples = get_punchline_examples()
+
     # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
     if not act1_beats:
         act1_beats = [{
@@ -782,6 +848,8 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     accumulated_text = ""
 
     for idx, beat in enumerate(act1_beats, 1):
+        # 方案一·第一阶段：先为本节拍生成笑点对白（庄重节拍会跳过）
+        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
         segment = generate_segment_for_beat(
             act_name="第一幕",
             beat_index=idx,
@@ -794,7 +862,9 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
             system_content=system_content,
             target_min_len=base_min,
             target_max_len=base_max,
-            act_id="act1"
+            act_id="act1",
+            punchlines_to_embed=punchlines,
+            punchline_examples_text=punchline_examples
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip() if accumulated_text else segment
@@ -813,6 +883,8 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
     
     # 第二幕：按节拍卡逐小节生成，再拼接成完整第二幕
     system_content = get_myth_system_prompt_base(None) + humor_reference
+
+    punchline_examples = get_punchline_examples()
 
     if not act2_beats:
         act2_beats = [{
@@ -834,6 +906,7 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
     accumulated_text = act1.strip()
 
     for idx, beat in enumerate(act2_beats, 1):
+        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
         segment = generate_segment_for_beat(
             act_name="第二幕",
             beat_index=idx,
@@ -846,7 +919,9 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
             system_content=system_content,
             target_min_len=base_min,
             target_max_len=base_max,
-            act_id="act2"
+            act_id="act2",
+            punchlines_to_embed=punchlines,
+            punchline_examples_text=punchline_examples
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -864,6 +939,8 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
 
     # 第三幕：按节拍卡逐小节生成，再拼接成完整第三幕
     system_content = get_myth_system_prompt_base(None) + humor_reference
+
+    punchline_examples = get_punchline_examples()
 
     # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
     if not act3_beats:
@@ -886,6 +963,7 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
     accumulated_text = act2.strip()
 
     for idx, beat in enumerate(act3_beats, 1):
+        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
         segment = generate_segment_for_beat(
             act_name="第三幕",
             beat_index=idx,
@@ -898,7 +976,9 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
             system_content=system_content,
             target_min_len=base_min,
             target_max_len=base_max,
-            act_id="act3"
+            act_id="act3",
+            punchlines_to_embed=punchlines,
+            punchline_examples_text=punchline_examples
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -1058,10 +1138,14 @@ def generate_segment_for_beat(
     system_content: str,
     target_min_len: int,
     target_max_len: int,
-    act_id: str = ""
+    act_id: str = "",
+    punchlines_to_embed: str = "",
+    punchline_examples_text: str = ""
 ):
     """
     通用：按【单张节拍卡】生成对应的一小节正文，并做轻量校验，返回通过校验的文本（或最后一次结果）。
+    punchlines_to_embed：方案一第二阶段传入的、本小节必须融入的互怼对白（先由专门接口生成）。
+    punchline_examples_text：方案二精选的「让人笑出来」对白示例，用于模仿节奏与梗的密度。
     """
     system_message = {
         "role": "system",
@@ -1073,6 +1157,9 @@ def generate_segment_for_beat(
     if prev_text:
         tail = prev_text.strip()[-400:]
         prev_summary = tail
+
+    punchline_block = ("【让人笑出来的对白示例（请模仿其节奏与梗的密度）】\n" + punchline_examples_text + "\n") if punchline_examples_text else ""
+    punchline_embed_block = ("【本小节必须自然融入的互怼对白（保持原意与笑点，可略改叙述衔接）】\n" + punchlines_to_embed + "\n") if punchlines_to_embed else ""
 
     special_constraints = ""
     if act_id == "act2":
@@ -1110,7 +1197,8 @@ def generate_segment_for_beat(
 - 情绪推动：{beat.get('情绪推动', '')}
 - 信息增量：{beat.get('信息增量', '')}
 - 禁止项：{beat.get('禁止项', '')}
-
+{punchline_block}
+{punchline_embed_block}
 {special_constraints}
 
 【写作硬性要求】
