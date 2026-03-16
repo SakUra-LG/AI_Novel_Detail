@@ -539,6 +539,93 @@ def get_punchline_examples():
         return ""
 
 
+def get_act3_emotional_system_prompt(reference_content=None):
+    """
+    获取第三幕专用的感动收束优先系统提示词
+    从"幽默优先"切换为"感动收束优先"
+    """
+    rag_part = f"""
+            【参考信息（可用可不用）】
+                只使用与本次神话改写强相关的内容样本，不引用其他世界观或门派设定；
+                参考内容：{reference_content if reference_content else "无"}
+    """ if reference_content else ""
+    
+    return f"""
+            角色：你是一名擅长改写中国神话故事的影视编剧，专注于第三幕的感动收束。
+            
+            【第三幕核心目标：感动收束优先】
+            - 第三幕主目标从"幽默优先"切换为"感动收束优先"
+            - 幽默只能作为余味，不得主导最后两拍
+            - 最后两拍必须完成以下四件事中的至少三件：
+              1. 主角代价显形（疲惫、血、裂、撑不住、消散、闭眼、放下、最后、终于等）
+              2. 情感对象明确回应（抱住、扶住、轻声、看着、泪、沉默、点头、叫了一声等）
+              3. 世界变化承接主角付出（风、光、田野、万物、土地、天空、回暖、复苏等）
+              4. 留下带余韵的收束动作/意象（回收前文某个意象，如干粮、水壶、弓、手、那句口头禅等）
+            
+            【幽默退场机制（最后1-2张节拍卡）】
+            - 禁止"至少3个笑点"的要求
+            - 禁止固定拆台副角继续高频接梗
+            - 最多只允许1个轻微缓冲句
+            - 且这个轻句必须是"嘴硬型温柔"，不能是纯搞笑
+            - 例如允许："你别磨蹭，我还听得见。"（嘴硬但温柔）
+            - 不允许："师父你现在像条晾干的鱼。"（纯搞笑，会打断情绪沉浸）
+            
+            【情感落点角色固定】
+            - 必须明确固定拆台副角为情感落点角色（如铁牛、小徒弟等）
+            - 第三幕结尾必须由该情感落点角色完成情感回应
+            - 群众/环境只能辅助，不能替代该角色
+            
+            【神话骨架强约束（不可违反）】
+            - 本文必须完整讲述所选原版神话从开端到结尾的全部关键事件链，不得跳过或模糊处理核心节点。
+            - 情节骨架必须与原版一致：关键事件的发生顺序、因果关系、结局结果、整体走向不得改变。
+            - 允许的改写范围仅限于【表达层】：对白、人物性格细节、动作描写、场景镜头等。
+            - 禁止改结局：不得新增"反转结局/不同结局"的设定。
+            - 禁止改寓意：必须保留原神话要表达的核心主题。
+            
+            【语言与边界】
+            - 严禁任何脏话、粗口和侮辱性用语。
+            - 不得使用强烈网络黑话和过度口水化表达。
+            - 不要出现"AI、系统、程序、玩家、观众、编剧、作者"等打破第四面墙的称呼。
+            - 必须全篇使用【简体中文】写作。
+            
+            【风格定位：介于剧本与小说之间】
+            - 保持小说的可读性和流畅叙述，让读者能顺畅阅读。
+            - 但要加强动作描写和场景细节，让内容具有影视化潜力。
+            - 动作描写要具体、可视化。
+            - 场景描写要有画面感，包括环境、光线、色彩、空间布局等。
+            - 人物动作要细致，包括肢体语言、表情变化、移动轨迹等。
+            
+            【节奏控制与时间感】
+            - 不要急于推进剧情，每个场景都要充分展开，让时间感拉长。
+            - 每个重要时刻都要"慢下来"：通过大量细节描写来延长读者对时间的感知。
+            - 在关键动作前增加"准备阶段"：先写角色的心理活动、观察、思考、准备，然后再写动作本身。
+            - 在关键动作后增加"反应阶段"：动作完成后，要写角色的感受、环境的反应、其他人的观察等。
+            
+            【细节密度要求】
+            - 每个动作都要分解成多个步骤。
+            - 每个场景都要详细描写。
+            - 每个对话都要有动作和情绪。
+            - 每个心理活动都要有外在表现。
+            - 每个环境都要多角度描写。
+            
+            【多感官描写】
+            - 必须使用多感官描写来拉长时间感和增强沉浸感。
+            - 每个重要场景都要至少包含3-4种感官的描写。
+            - 通过感官描写来营造氛围。
+            - 感官描写要有变化，交替使用不同的感官。
+            
+            【输出格式（必须严格遵守）】
+            - 【只输出故事正文】只输出完整的改写故事【正文】，不要任何题目、小标题、总结语、括号内说明、系统提示、道歉、回顾、统计、字符计数等任何元文本内容。
+            - 【禁止系统提示和元文本】绝对禁止出现系统提示、道歉、回顾、统计、计数等。
+            - 【禁止列表和注释】不要列点，不要使用任何形式的列表、注释或"注释：""说明："之类的段落。
+            - 【禁止表情符号】不要输出 emoji、颜文字或特殊符号。
+            - 【禁止解释性文字】不要解释你在做什么。
+            - 【禁止空行和空白内容】绝对禁止在内容中间或结尾生成任何空行、空白段落或空白内容。
+            - 【偏向小说风格】可以适当弱化剧本的格式，更偏向于小说风格。
+            {rag_part}
+    """
+
+
 def get_touching_ending_examples():
     """
     从 knowledgeBase/touching_ending_examples.txt 加载人为挑选的「让人感动」级结局示例。
@@ -564,6 +651,34 @@ def get_touching_ending_examples():
         return result
     except Exception as e:
         print(f"加载 touching_ending_examples.txt 时出错: {e}")
+        return ""
+
+
+def get_touching_foreshadow_examples():
+    """
+    从 knowledgeBase/touching_foreshadow_examples.txt 加载「前置关系型样本」。
+    文件格式：以 --- 分隔每段示例，# 开头的行忽略。用于第一幕和第二幕生成时注入提示词，学习如何埋下情感伏笔和推进关系。
+    """
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(current_dir, 'knowledgeBase', 'touching_foreshadow_examples.txt')
+        if not os.path.exists(path):
+            path = 'knowledgeBase/touching_foreshadow_examples.txt'
+        if not os.path.exists(path):
+            return ""
+        with open(path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        # 去掉 # 开头的行，再按 --- 分割成块
+        lines = [line for line in raw.splitlines() if not line.strip().startswith('#')]
+        text = '\n'.join(lines)
+        blocks = [b.strip() for b in text.split('---') if b.strip()]
+        if not blocks:
+            return ""
+        result = "\n\n".join(blocks)
+        print(f"已加载 {len(blocks)} 条「前置关系型样本」")
+        return result
+    except Exception as e:
+        print(f"加载 touching_foreshadow_examples.txt 时出错: {e}")
         return ""
 
 
@@ -669,6 +784,8 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
               * 情绪推动：角色此刻情绪从A到B（例如烦闷→决断、焦灼→咬牙、崩溃→释然）
               * 信息增量：这一节新增的信息是什么（不能重复前文）
               * 禁止项：列出1-2条"这一节绝对不能写什么"（如新角色突然出现、跳到结局、跑去写日常等）
+              * 情感伏笔：这一拍为结尾感动埋什么伏笔（如主角把唯一资源留给别人、平时插科打诨的人在关键时刻突然认真、一个反复出现的小动作等）
+              * 关系推进：主角和情感落点角色（固定拆台副角或其他重要角色）的关系如何变化（如从互怼到担心、从表面嫌弃到深层守护等）
             
             三幕逻辑总结：
             - 第一幕：背景与动机建立完毕，以「踏上征途/开始行动」类节点收尾。
@@ -693,6 +810,8 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
    - 情绪推动：角色此刻情绪从A到B
    - 信息增量：这一节新增的信息是什么（不能重复前文）
    - 禁止项：列出1-2条"这一节绝对不能写什么"
+   - 情感伏笔：这一拍为结尾感动埋什么伏笔（如主角把唯一资源留给别人、平时插科打诨的人在关键时刻突然认真、一个反复出现的小动作等）
+   - 关系推进：主角和情感落点角色（固定拆台副角或其他重要角色）的关系如何变化（如从互怼到担心、从表面嫌弃到深层守护等）
 
 请严格按照以下格式输出：
 第一幕大纲（xx字）：[第一幕的具体内容]
@@ -703,6 +822,8 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 情绪推动：[情绪从A到B]
 信息增量：[新增信息]
 禁止项：[1-2条禁止项]
+情感伏笔：[为结尾感动埋什么伏笔]
+关系推进：[主角和情感落点角色的关系如何变化]
 
 第一幕节拍卡2：
 场景目标：[叙事功能]
@@ -792,9 +913,17 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
             if info_match:
                 beat_card['信息增量'] = info_match.group(1).strip()
             # 禁止项
-            ban_match = re.search(r'禁止项[：:]*\s*(.*?)$', beat_text, re.DOTALL)
+            ban_match = re.search(r'禁止项[：:]*\s*(.*?)(?=情感伏笔|关系推进|$)', beat_text, re.DOTALL)
             if ban_match:
                 beat_card['禁止项'] = ban_match.group(1).strip()
+            # 情感伏笔
+            emotion_foreshadow_match = re.search(r'情感伏笔[：:]*\s*(.*?)(?=关系推进|$)', beat_text, re.DOTALL)
+            if emotion_foreshadow_match:
+                beat_card['情感伏笔'] = emotion_foreshadow_match.group(1).strip()
+            # 关系推进
+            relationship_match = re.search(r'关系推进[：:]*\s*(.*?)$', beat_text, re.DOTALL)
+            if relationship_match:
+                beat_card['关系推进'] = relationship_match.group(1).strip()
             
             # 如果解析到了至少一个字段，就添加到列表
             if beat_card:
@@ -971,8 +1100,12 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【全部哪吒风格参考样本（请学习其表达方式，并在文中穿插若干仿写哪吒风格的幽默点，勿通篇哪吒口吻）】\n{humor_samples}" if humor_samples else ""
     
+    # 提取前置关系型样本（用于学习如何埋下情感伏笔和推进关系）
+    foreshadow_examples = get_touching_foreshadow_examples()
+    foreshadow_reference = f"\n\n【前置关系型样本（请学习如何在前两幕埋下情感伏笔和推进关系）】\n{foreshadow_examples}" if foreshadow_examples else ""
+    
     # 第一幕：按节拍卡逐小节生成，再拼接成完整第一幕
-    system_content = get_myth_system_prompt_base(rag_content) + humor_reference
+    system_content = get_myth_system_prompt_base(rag_content) + humor_reference + foreshadow_reference
 
     # 方案二：加载人为挑选的「让人笑出来」对白示例，每小节注入
     punchline_examples = get_punchline_examples()
@@ -984,7 +1117,9 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
             "画面要素": "",
             "情绪推动": "",
             "信息增量": "",
-            "禁止项": ""
+            "禁止项": "",
+            "情感伏笔": "",
+            "关系推进": ""
         }]
 
     total_beats = len(act1_beats)
@@ -1031,8 +1166,12 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【全部哪吒风格参考样本（请学习其表达方式，并在文中穿插若干仿写哪吒风格的幽默点，勿通篇哪吒口吻）】\n{humor_samples}" if humor_samples else ""
     
+    # 提取前置关系型样本（用于学习如何埋下情感伏笔和推进关系）
+    foreshadow_examples = get_touching_foreshadow_examples()
+    foreshadow_reference = f"\n\n【前置关系型样本（请学习如何在前两幕埋下情感伏笔和推进关系）】\n{foreshadow_examples}" if foreshadow_examples else ""
+    
     # 第二幕：按节拍卡逐小节生成，再拼接成完整第二幕
-    system_content = get_myth_system_prompt_base(None) + humor_reference
+    system_content = get_myth_system_prompt_base(None) + humor_reference + foreshadow_reference
 
     punchline_examples = get_punchline_examples()
 
@@ -1042,7 +1181,9 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
             "画面要素": "",
             "情绪推动": "",
             "信息增量": "",
-            "禁止项": ""
+            "禁止项": "",
+            "情感伏笔": "",
+            "关系推进": ""
         }]
 
     total_beats = len(act2_beats)
@@ -1080,20 +1221,16 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
     return "\n\n".join(segments)
 
 
-def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, touching_storyline=None):
+def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, touching_storyline=None, emotional_character=None):
     """
     生成第三幕（600-800字）
+    emotional_character: 情感落点角色名称（如"铁牛"、"小徒弟"等）
     """
-    # 提取幽默样本
-    humor_samples = get_humor_samples()
-    humor_reference = f"\n\n【全部哪吒风格参考样本（请学习其表达方式，并在文中穿插若干仿写哪吒风格的幽默点，勿通篇哪吒口吻）】\n{humor_samples}" if humor_samples else ""
-
     # 提取感动结局样本
     touching_ending_examples = get_touching_ending_examples()
-    touching_reference = f"\n\n【感动结局参考样本（请学习其情感表达与节奏，第三幕结局应偏向感动：自我牺牲、深情守护、感人收束等）】\n{touching_ending_examples}" if touching_ending_examples else ""
-
-    # 第三幕：按节拍卡逐小节生成，再拼接成完整第三幕
-    system_content = get_myth_system_prompt_base(None) + humor_reference + touching_reference
+    
+    # 第三幕使用专用的感动收束优先系统提示
+    system_content = get_act3_emotional_system_prompt(None) + (f"\n\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}" if touching_ending_examples else "")
 
     punchline_examples = get_punchline_examples()
 
@@ -1104,7 +1241,9 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
             "画面要素": "",
             "情绪推动": "",
             "信息增量": "",
-            "禁止项": ""
+            "禁止项": "",
+            "情感伏笔": "",
+            "关系推进": ""
         }]
 
     total_beats = len(act3_beats)
@@ -1116,27 +1255,55 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
     segments = []
     # 将第二幕全文作为"更早前文"，帮助第三幕承接，在单节生成时只截取尾部片段
     accumulated_text = act2.strip()
+    
+    # 提取前文中的关键意象作为memory_hooks（用于验收时检查是否回收）
+    memory_hooks = []
+    if accumulated_text:
+        # 简单提取：寻找常见的意象词
+        common_hooks = ['干粮', '水壶', '弓', '手', '那句话', '那句话', '那句话']
+        for hook in common_hooks:
+            if hook in accumulated_text:
+                memory_hooks.append(hook)
 
     for idx, beat in enumerate(act3_beats, 1):
-        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
-        segment = generate_segment_for_beat(
-            act_name="第三幕",
-            beat_index=idx,
-            total_beats=total_beats,
-            beat=beat,
-            overall_outline=overall_outline,
-            act_outline=act3_outline,
-            prev_text=accumulated_text,
-            prompt=prompt,
-            system_content=system_content,
-            target_min_len=base_min,
-            target_max_len=base_max,
-            act_id="act3",
-            punchlines_to_embed=punchlines,
-            punchline_examples_text=punchline_examples,
-            touching_storyline=touching_storyline,
-            touching_ending_examples=touching_ending_examples  # 传递已加载的感动结局示例，避免重复加载
-        )
+        # 最后1-2张节拍卡使用专门的结尾beat生成函数
+        if idx >= total_beats - 1:
+            segment = generate_act3_ending_beat(
+                act_name="第三幕",
+                beat_index=idx,
+                total_beats=total_beats,
+                beat=beat,
+                overall_outline=overall_outline,
+                act_outline=act3_outline,
+                prev_text=accumulated_text,
+                prompt=prompt,
+                system_content=system_content,
+                target_min_len=base_min,
+                target_max_len=base_max,
+                touching_ending_examples=touching_ending_examples,
+                emotional_character=emotional_character
+            )
+        else:
+            # 其他节拍卡使用普通生成函数
+            punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
+            segment = generate_segment_for_beat(
+                act_name="第三幕",
+                beat_index=idx,
+                total_beats=total_beats,
+                beat=beat,
+                overall_outline=overall_outline,
+                act_outline=act3_outline,
+                prev_text=accumulated_text,
+                prompt=prompt,
+                system_content=system_content,
+                target_min_len=base_min,
+                target_max_len=base_max,
+                act_id="act3",
+                punchlines_to_embed=punchlines,
+                punchline_examples_text=punchline_examples,
+                touching_storyline=touching_storyline,
+                touching_ending_examples=touching_ending_examples
+            )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
 
@@ -1145,6 +1312,33 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
     # 仍保留一次整体质量检查（长度/繁体/镜头括号等），仅做告警，不再整体重写
     if not validate_act3(final_act3):
         print("警告：第三幕整体质量校验未通过（长度/格式/繁体检测），但已按节拍卡逐段生成。")
+    
+    # 感动结局验收：如果不达标，只重写最后两拍
+    if not validate_touching_ending(final_act3, memory_hooks):
+        print("警告：第三幕感动结局验收未通过，正在重新生成最后两拍...")
+        # 重新生成最后两拍
+        for idx in range(max(1, total_beats - 1), total_beats + 1):
+            if idx <= len(act3_beats):
+                beat = act3_beats[idx - 1]
+                accumulated_text_before = "\n\n".join(segments[:idx-1]) if idx > 1 else act2.strip()
+                new_segment = generate_act3_ending_beat(
+                    act_name="第三幕",
+                    beat_index=idx,
+                    total_beats=total_beats,
+                    beat=beat,
+                    overall_outline=overall_outline,
+                    act_outline=act3_outline,
+                    prev_text=accumulated_text_before,
+                    prompt=prompt,
+                    system_content=system_content,
+                    target_min_len=base_min,
+                    target_max_len=base_max,
+                    touching_ending_examples=touching_ending_examples,
+                    emotional_character=emotional_character
+                )
+                segments[idx - 1] = new_segment
+        final_act3 = "\n\n".join(segments)
+        print("已重新生成最后两拍")
 
     return final_act3
 
@@ -1383,6 +1577,8 @@ def generate_segment_for_beat(
 - 情绪推动：{beat.get('情绪推动', '')}
 - 信息增量：{beat.get('信息增量', '')}
 - 禁止项：{beat.get('禁止项', '')}
+- 情感伏笔：{beat.get('情感伏笔', '')}
+- 关系推进：{beat.get('关系推进', '')}
 {punchline_block}
 {punchline_embed_block}
 {touching_storyline_block}
@@ -1392,13 +1588,21 @@ def generate_segment_for_beat(
 1. 只写本节对应的一小段剧情，不要提前写后续节拍的情节，也不要回头复述已经写过的内容。
 2. 正文中必须自然出现上方"画面要素"中至少 1-2 个具体画面或动作（可以改写，不要生搬硬套短语）。
 3. 严格避免"禁止项"里的内容和表达，一旦要写到类似内容，必须换一种不违背规则的方式。
-4. 幽默强度与通道要求（本改写以幽默为先，宁可笑点明显也不要为文学性牺牲好笑）：
-   - 强度：本小节笑点以【2级：明显好笑】为主（读者能明确感到「这里在搞笑」），可穿插【3级：小爆点】（一抛一接、误会升级、拆台接梗）。避免只有 1 级轻描淡写、读者无感的「软笑点」。
-   - 若当前节拍卡的"场景目标"属于铺垫、日常、情绪累积、尝试行动、寻找突破口、行动间隙等【非关键情节】：本小节【必须出现至少 3 个笑点】，其中【至少 2 个必须是对白笑点】（甲说—乙接，或互怼、拆台、调侃）；第三个可继续对白或旁白/动作反差。类型上须在本小节内用到【夸张、反差、错误逻辑、嘴硬、自嘲、拆台】中的至少 1 种，且鼓励多用对白呈现。
-   - 若当前节拍卡的"场景目标"属于【关键转折/重大抉择/牺牲代价/终极使命完成/收束画面】：可只保留 0-1 个极克制的轻回应，不削弱庄重感。
-   - 幽默类型必须多样：夸张（夸张形容处境/能力）、反差（严肃场合说人话、大目标配小吐槽）、错误逻辑/歪楼（故意或无意把话题带偏、离谱但自洽的接话）、嘴硬、自嘲、拆台互怼。同一小节内避免只重复一种，尽量通过对白完成。
-   - 单次笑点 1-2 句话，允许【连续 2 句「一抛一接」】对白；严禁大段独白无接话。严禁现代职场/网络流行语、低俗/侮辱性桥段；**严禁骂人、辱骂、人身攻击等低俗幽默方式**，互怼仅限「逗、皮、嘴硬」，不得脏话或贬损人格。
-   - **固定拆台副角与互怼**：若本故事已设定【固定拆台副角】（如小徒弟阿狗、随从某某等有具体名字的角色），本小节须出现该副角与主角的**至少一轮互怼/拆台对白**（主角说—该副角接话拆台或吐槽），拆台要**干脆、有梗、一句到位**，追求「读者能笑出来」的效果；避免只有主角独白或与无名路人的零散对话。
+4. 幽默强度与通道要求：
+   - 【第三幕后半段幽默退场机制】：如果 act_id == "act3" 且 beat_index >= total_beats - 1（最后1-2张节拍卡）：
+     * 禁止"至少3个笑点"的要求
+     * 禁止固定拆台副角继续高频接梗
+     * 最多只允许1个轻微缓冲句
+     * 且这个轻句必须是"嘴硬型温柔"，不能是纯搞笑
+     * 例如允许："你别磨蹭，我还听得见。"（嘴硬但温柔）
+     * 不允许："师父你现在像条晾干的鱼。"（纯搞笑，会打断情绪沉浸）
+   - 【其他节拍卡】：本改写以幽默为先，宁可笑点明显也不要为文学性牺牲好笑：
+     * 强度：本小节笑点以【2级：明显好笑】为主（读者能明确感到「这里在搞笑」），可穿插【3级：小爆点】（一抛一接、误会升级、拆台接梗）。避免只有 1 级轻描淡写、读者无感的「软笑点」。
+     * 若当前节拍卡的"场景目标"属于铺垫、日常、情绪累积、尝试行动、寻找突破口、行动间隙等【非关键情节】：本小节【必须出现至少 3 个笑点】，其中【至少 2 个必须是对白笑点】（甲说—乙接，或互怼、拆台、调侃）；第三个可继续对白或旁白/动作反差。类型上须在本小节内用到【夸张、反差、错误逻辑、嘴硬、自嘲、拆台】中的至少 1 种，且鼓励多用对白呈现。
+     * 若当前节拍卡的"场景目标"属于【关键转折/重大抉择/牺牲代价/终极使命完成/收束画面】：可只保留 0-1 个极克制的轻回应，不削弱庄重感。
+     * 幽默类型必须多样：夸张（夸张形容处境/能力）、反差（严肃场合说人话、大目标配小吐槽）、错误逻辑/歪楼（故意或无意把话题带偏、离谱但自洽的接话）、嘴硬、自嘲、拆台互怼。同一小节内避免只重复一种，尽量通过对白完成。
+     * 单次笑点 1-2 句话，允许【连续 2 句「一抛一接」】对白；严禁大段独白无接话。严禁现代职场/网络流行语、低俗/侮辱性桥段；**严禁骂人、辱骂、人身攻击等低俗幽默方式**，互怼仅限「逗、皮、嘴硬」，不得脏话或贬损人格。
+     * **固定拆台副角与互怼**：若本故事已设定【固定拆台副角】（如小徒弟阿狗、随从某某等有具体名字的角色），本小节须出现该副角与主角的**至少一轮互怼/拆台对白**（主角说—该副角接话拆台或吐槽），拆台要**干脆、有梗、一句到位**，追求「读者能笑出来」的效果；避免只有主角独白或与无名路人的零散对话。
 5. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，分 1-2 个自然段即可。
 6. 全文使用简体中文，不要出现列表、数字编号、说明文字、"节拍卡"字样或任何元提示。
 7. 语气、世界观、人物设定要与前文保持连续，像在同一个长篇故事里自然接着往下写。
@@ -1521,6 +1725,161 @@ def validate_act_beats(script: str, beats: list) -> bool:
     return True
 
 
+def generate_act3_ending_beat(
+    act_name: str,
+    beat_index: int,
+    total_beats: int,
+    beat: dict,
+    overall_outline: str,
+    act_outline: str,
+    prev_text: str,
+    prompt: str,
+    system_content: str,
+    target_min_len: int,
+    target_max_len: int,
+    touching_ending_examples: str = None,
+    emotional_character: str = None  # 情感落点角色名称
+):
+    """
+    专门用于生成第三幕结尾beat的函数
+    额外要求：
+    - 必须回收前文至少1个具体伏笔
+    - 必须出现1个克制但明确的身体动作
+    - 必须出现1个非解释性的环境收束镜头
+    - 不允许再新增高密度互怼
+    """
+    system_message = {
+        "role": "system",
+        "content": system_content
+    }
+
+    # 简要前文摘要：只保留末尾一小段，帮助承接
+    prev_summary = ""
+    if prev_text:
+        tail = prev_text.strip()[-400:]
+        prev_summary = tail
+
+    # 感动结局示例
+    touching_examples_block = f"\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}\n" if touching_ending_examples else ""
+    
+    # 情感落点角色提示
+    emotional_character_block = f"\n【情感落点角色】\n本故事的情感落点角色是：{emotional_character}。第三幕结尾必须由该角色完成情感回应，群众/环境只能辅助，不能替代该角色。\n" if emotional_character else ""
+
+    user_content = f"""
+你正在创作《{prompt}》的{act_name}，现在要写本幕第 {beat_index}/{total_beats} 张节拍卡对应的一小节正文。这是【结尾beat】，必须达到感动高潮。
+
+【总体大纲（仅供参考，用于把握全局走向）】
+{overall_outline}
+
+【本幕大纲（必须对齐）】
+{act_outline}
+
+【已完成前文的简要摘取】（用于承接和回收伏笔）
+{prev_summary if prev_summary else "（无前文）"}
+
+【当前节拍卡写作任务（必须完成）】
+- 场景目标：{beat.get('场景目标', '')}
+- 画面要素：{beat.get('画面要素', '')}
+- 情绪推动：{beat.get('情绪推动', '')}
+- 信息增量：{beat.get('信息增量', '')}
+- 禁止项：{beat.get('禁止项', '')}
+- 情感伏笔：{beat.get('情感伏笔', '')}
+- 关系推进：{beat.get('关系推进', '')}
+{touching_examples_block}
+{emotional_character_block}
+
+【结尾beat硬性要求（必须全部满足）】
+1. 必须回收前文至少1个具体伏笔（如干粮、水壶、弓、手、那句口头禅等）
+2. 必须出现1个克制但明确的身体动作（如抱住、扶住、握住、轻拍等）
+3. 必须出现1个非解释性的环境收束镜头（如风、光、田野、万物、土地、天空、回暖、复苏等）
+4. 不允许再新增高密度互怼，最多只允许1个轻微缓冲句，且必须是"嘴硬型温柔"（如"你别磨蹭，我还听得见"），不能是纯搞笑
+5. 必须完成以下四件事中的至少三件：
+   - 主角代价显形（疲惫、血、裂、撑不住、消散、闭眼、放下、最后、终于等）
+   - 情感对象明确回应（抱住、扶住、轻声、看着、泪、沉默、点头、叫了一声等）
+   - 世界变化承接主角付出（风、光、田野、万物、土地、天空、回暖、复苏等）
+   - 留下带余韵的收束动作/意象（回收前文某个意象）
+
+【写作硬性要求】
+1. 只写本节对应的一小段剧情，不要提前写后续节拍的情节，也不要回头复述已经写过的内容。
+2. 正文中必须自然出现上方"画面要素"中至少 1-2 个具体画面或动作。
+3. 严格避免"禁止项"里的内容和表达。
+4. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，分 1-2 个自然段即可。
+5. 全文使用简体中文，不要出现列表、数字编号、说明文字、"节拍卡"字样或任何元提示。
+6. 语气、世界观、人物设定要与前文保持连续，像在同一个长篇故事里自然接着往下写。
+7. 只输出这一小节的【纯正文】，不要添加标题、小结或任何额外说明。
+"""
+
+    user_message = {
+        "role": "user",
+        "content": user_content
+    }
+
+    def _call_and_postprocess(temp: float):
+        reply_local = call_qianwen_api(
+            [system_message, user_message],
+            temperature=temp,
+            top_p=0.9,
+            repetition_penalty=1.35,
+            max_tokens=800
+        )
+        cleaned = clean_markdown(reply_local)
+        return fix_punctuation_and_paragraphs(cleaned)
+
+    best_result = None
+    for temp in (0.9, 0.8):
+        seg = _call_and_postprocess(temp)
+        best_result = seg
+        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2)):
+            return seg.strip()
+
+    return (best_result or "").strip()
+
+
+def validate_touching_ending(act3_text: str, memory_hooks: list = None) -> bool:
+    """
+    验证第三幕结尾是否达到感动闭环
+    检查结尾是否命中以下4项中的至少3项：
+    1. 出现代价词：疲惫、血、裂、撑不住、消散、闭眼、放下、最后、终于
+    2. 出现回应词：抱住、扶住、轻声、看着、泪、沉默、点头、叫了一声
+    3. 出现世界变化词：风、光、田野、万物、土地、天空、回暖、复苏
+    4. 出现回收词：重复前文某个意象（需要memory_hooks来检查）
+    """
+    if not act3_text:
+        return False
+    
+    # 只检查最后500字（结尾部分）
+    ending_text = act3_text[-500:] if len(act3_text) > 500 else act3_text
+    
+    # 代价词
+    cost_words = ['疲惫', '血', '裂', '撑不住', '消散', '闭眼', '放下', '最后', '终于']
+    has_cost = any(word in ending_text for word in cost_words)
+    
+    # 回应词
+    response_words = ['抱住', '扶住', '轻声', '看着', '泪', '沉默', '点头', '叫了一声', '握住', '轻拍']
+    has_response = any(word in ending_text for word in response_words)
+    
+    # 世界变化词
+    world_change_words = ['风', '光', '田野', '万物', '土地', '天空', '回暖', '复苏', '生机', '恢复']
+    has_world_change = any(word in ending_text for word in world_change_words)
+    
+    # 回收词（如果有memory_hooks，检查是否回收了前文意象）
+    has_recovery = False
+    if memory_hooks:
+        # 简单检查：如果结尾出现了memory_hooks中的关键词，认为有回收
+        for hook in memory_hooks:
+            if hook and hook in ending_text:
+                has_recovery = True
+                break
+    else:
+        # 如果没有memory_hooks，检查常见的回收意象词
+        recovery_words = ['干粮', '水壶', '弓', '手', '那句话', '那句话', '那句话']
+        has_recovery = any(word in ending_text for word in recovery_words)
+    
+    # 至少命中3项
+    count = sum([has_cost, has_response, has_world_change, has_recovery])
+    return count >= 3
+
+
 def validate_script(script):
     """
     验证脚本结构完整性
@@ -1634,7 +1993,23 @@ def generate_myth_rewrite(prompt):
     )
     print(f"第二幕生成完成（{len(act2)}字）\n")
     
-    # Step 6: 生成第三幕（使用第三幕大纲和第二幕作为上下文，融入第三幕感动线索）
+    # Step 6: 提取情感落点角色（固定拆台副角）
+    emotional_character = None
+    # 尝试从节拍卡或大纲中提取固定拆台副角名称
+    for act_beats in [acts_outline.get('act1_beats', []), acts_outline.get('act2_beats', []), acts_outline.get('act3_beats', [])]:
+        for beat in act_beats:
+            if isinstance(beat, dict):
+                relationship = beat.get('关系推进', '')
+                # 简单提取：寻找常见的副角名称模式
+                import re
+                match = re.search(r'(铁牛|小徒弟|阿狗|随从|徒弟|副角)', relationship)
+                if match:
+                    emotional_character = match.group(1)
+                    break
+        if emotional_character:
+            break
+    
+    # Step 7: 生成第三幕（使用第三幕大纲和第二幕作为上下文，融入第三幕感动线索）
     print("正在生成第三幕...")
     act3 = generate_act3(
         acts_outline['act3'],
@@ -1642,7 +2017,8 @@ def generate_myth_rewrite(prompt):
         act2,
         prompt,
         acts_outline.get('act3_beats'),
-        touching_storyline=touching_storyline['act3_touching']
+        touching_storyline=touching_storyline['act3_touching'],
+        emotional_character=emotional_character
     )
     print(f"第三幕生成完成（{len(act3)}字）\n")
     
@@ -1659,7 +2035,8 @@ def generate_myth_rewrite(prompt):
             act2,
             prompt,
             acts_outline.get('act3_beats'),
-            touching_storyline=touching_storyline['act3_touching']
+            touching_storyline=touching_storyline['act3_touching'],
+            emotional_character=emotional_character
         )
         final_script = act1 + "\n\n" + act2 + "\n\n" + act3
         final_script = clean_story_postprocess(final_script)
