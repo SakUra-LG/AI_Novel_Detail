@@ -539,6 +539,34 @@ def get_punchline_examples():
         return ""
 
 
+def get_touching_ending_examples():
+    """
+    从 knowledgeBase/touching_ending_examples.txt 加载人为挑选的「让人感动」级结局示例。
+    文件格式：以 --- 分隔每段示例，# 开头的行忽略。用于第三幕结局生成时注入提示词。
+    """
+    try:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(current_dir, 'knowledgeBase', 'touching_ending_examples.txt')
+        if not os.path.exists(path):
+            path = 'knowledgeBase/touching_ending_examples.txt'
+        if not os.path.exists(path):
+            return ""
+        with open(path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        # 去掉 # 开头的行，再按 --- 分割成块
+        lines = [line for line in raw.splitlines() if not line.strip().startswith('#')]
+        text = '\n'.join(lines)
+        blocks = [b.strip() for b in text.split('---') if b.strip()]
+        if not blocks:
+            return ""
+        result = "\n\n".join(blocks)
+        print(f"已加载 {len(blocks)} 条「让人感动」结局示例")
+        return result
+    except Exception as e:
+        print(f"加载 touching_ending_examples.txt 时出错: {e}")
+        return ""
+
+
 def generate_punchline_dialogues_for_beat(beat, overall_outline, theme_prompt, punchline_examples_text):
     """
     方案一·第一阶段：针对当前节拍专门生成 2-3 组「让人笑出来」级的互怼对白。
@@ -814,7 +842,128 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     }
 
 
-def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats=None):
+def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act3_outline, prompt, rag_content):
+    """
+    基于总体大纲和三幕大纲，生成一条贯穿三幕的感动故事线索。
+    这条线索应该从第一幕开始铺垫，在第二幕发展，在第三幕达到高潮并收束。
+    
+    返回: {
+        "act1_touching": "第一幕的感动线索部分（铺垫）",
+        "act2_touching": "第二幕的感动线索部分（发展）",
+        "act3_touching": "第三幕的感动线索部分（高潮与收束）"
+    }
+    """
+    system_message = {
+        "role": "system",
+        "content": get_myth_system_prompt_base(rag_content) + f"""
+            你是一位擅长设计情感线索的编剧。请基于给定的故事大纲，设计一条贯穿三幕的感动故事线索。
+            
+            【感动线索的设计原则】
+            - 这条线索应该与主线故事自然融合，不是生硬添加的支线
+            - 第一幕：铺垫阶段 - 埋下感动的种子（如主角的动机、与重要人物的关系、内心的牵挂等）
+            - 第二幕：发展阶段 - 在主角行动过程中，感动线索逐渐显现（如对世界的守护、对亲人的思念、对使命的坚持等）
+            - 第三幕：高潮与收束 - 感动线索达到高潮，通过自我牺牲、深情守护、感人收束等方式，营造感人的结局
+            
+            【感动元素类型】
+            - 自我牺牲：主角为了完成使命，付出巨大代价
+            - 深情守护：主角对世界、对他人、对亲人的深情守护和付出
+            - 感人收束：通过环境变化、人物反应、情感升华等方式，营造感人的收束氛围
+            - 情感共鸣：通过副角/旁观者的反应、对话、动作等，增强情感共鸣
+            
+            【注意事项】
+            - 感动线索要自然，不能为了感动而强行煽情
+            - 要与幽默基调平衡，感动与幽默可以并存，但不能互相削弱
+            - 如果故事本身不适合感动线索（如纯喜剧），可以设计较轻的情感线索
+            - 每幕的感动线索部分应该具体、可执行，便于在写作时融入
+        """
+    }
+    
+    user_message = {
+        "role": "user",
+        "content": f"""
+请为《{prompt}》设计一条贯穿三幕的感动故事线索。
+
+【总体大纲】
+{overall_outline}
+
+【第一幕大纲】
+{act1_outline}
+
+【第二幕大纲】
+{act2_outline}
+
+【第三幕大纲】
+{act3_outline}
+
+请设计一条感动故事线索，并将其分成三部分，分别对应三幕：
+1. 第一幕感动线索（铺垫阶段）：约50-80字，描述在第一幕中如何埋下感动的种子
+2. 第二幕感动线索（发展阶段）：约50-80字，描述在第二幕中感动线索如何发展
+3. 第三幕感动线索（高潮与收束）：约80-120字，描述在第三幕中如何达到感动高潮并收束
+
+请严格按照以下格式输出：
+第一幕感动线索：[第一幕的感动线索内容]
+第二幕感动线索：[第二幕的感动线索内容]
+第三幕感动线索：[第三幕的感动线索内容]
+        """
+    }
+    
+    reply = call_qianwen_api(
+        [system_message, user_message],
+        temperature=0.8,
+        top_p=0.9,
+        repetition_penalty=1.2,
+        max_tokens=800
+    )
+    
+    cleaned_reply = clean_markdown(reply)
+    
+    # 解析回复，提取三幕的感动线索
+    act1_touching = ""
+    act2_touching = ""
+    act3_touching = ""
+    
+    # 尝试提取第一幕感动线索
+    match1 = re.search(r'第一幕感动线索[：:]\s*(.+?)(?=第二幕感动线索|$)', cleaned_reply, re.DOTALL)
+    if match1:
+        act1_touching = match1.group(1).strip()
+    
+    # 尝试提取第二幕感动线索
+    match2 = re.search(r'第二幕感动线索[：:]\s*(.+?)(?=第三幕感动线索|$)', cleaned_reply, re.DOTALL)
+    if match2:
+        act2_touching = match2.group(1).strip()
+    
+    # 尝试提取第三幕感动线索
+    match3 = re.search(r'第三幕感动线索[：:]\s*(.+?)$', cleaned_reply, re.DOTALL)
+    if match3:
+        act3_touching = match3.group(1).strip()
+    
+    # 如果解析失败，尝试其他格式
+    if not act1_touching or not act2_touching or not act3_touching:
+        # 尝试按行分割
+        lines = cleaned_reply.split('\n')
+        for i, line in enumerate(lines):
+            if '第一幕' in line and '感动' in line:
+                if i + 1 < len(lines):
+                    act1_touching = lines[i + 1].strip()
+            elif '第二幕' in line and '感动' in line:
+                if i + 1 < len(lines):
+                    act2_touching = lines[i + 1].strip()
+            elif '第三幕' in line and '感动' in line:
+                if i + 1 < len(lines):
+                    act3_touching = lines[i + 1].strip()
+    
+    # 如果仍然没有提取到，使用整个回复作为第三幕的感动线索（至少保证有内容）
+    if not act3_touching:
+        act3_touching = cleaned_reply.strip()[:200]
+    
+    return {
+        "act1_touching": act1_touching,
+        "act2_touching": act2_touching,
+        "act3_touching": act3_touching
+    }
+
+
+def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats=None, touching_storyline=None):
     """
     生成第一幕（600-800字）
     """
@@ -864,7 +1013,8 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
             target_max_len=base_max,
             act_id="act1",
             punchlines_to_embed=punchlines,
-            punchline_examples_text=punchline_examples
+            punchline_examples_text=punchline_examples,
+            touching_storyline=touching_storyline
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip() if accumulated_text else segment
@@ -873,7 +1023,7 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     return "\n\n".join(segments)
 
 
-def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
+def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, touching_storyline=None):
     """
     生成第二幕（900-1100字）
     """
@@ -921,7 +1071,8 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
             target_max_len=base_max,
             act_id="act2",
             punchlines_to_embed=punchlines,
-            punchline_examples_text=punchline_examples
+            punchline_examples_text=punchline_examples,
+            touching_storyline=touching_storyline
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -929,7 +1080,7 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None):
     return "\n\n".join(segments)
 
 
-def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
+def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, touching_storyline=None):
     """
     生成第三幕（600-800字）
     """
@@ -937,8 +1088,12 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
     humor_samples = get_humor_samples()
     humor_reference = f"\n\n【全部哪吒风格参考样本（请学习其表达方式，并在文中穿插若干仿写哪吒风格的幽默点，勿通篇哪吒口吻）】\n{humor_samples}" if humor_samples else ""
 
+    # 提取感动结局样本
+    touching_ending_examples = get_touching_ending_examples()
+    touching_reference = f"\n\n【感动结局参考样本（请学习其情感表达与节奏，第三幕结局应偏向感动：自我牺牲、深情守护、感人收束等）】\n{touching_ending_examples}" if touching_ending_examples else ""
+
     # 第三幕：按节拍卡逐小节生成，再拼接成完整第三幕
-    system_content = get_myth_system_prompt_base(None) + humor_reference
+    system_content = get_myth_system_prompt_base(None) + humor_reference + touching_reference
 
     punchline_examples = get_punchline_examples()
 
@@ -978,7 +1133,9 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None):
             target_max_len=base_max,
             act_id="act3",
             punchlines_to_embed=punchlines,
-            punchline_examples_text=punchline_examples
+            punchline_examples_text=punchline_examples,
+            touching_storyline=touching_storyline,
+            touching_ending_examples=touching_ending_examples  # 传递已加载的感动结局示例，避免重复加载
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -1140,7 +1297,9 @@ def generate_segment_for_beat(
     target_max_len: int,
     act_id: str = "",
     punchlines_to_embed: str = "",
-    punchline_examples_text: str = ""
+    punchline_examples_text: str = "",
+    touching_storyline: str = None,
+    touching_ending_examples: str = None  # 可选：已加载的感动结局示例，避免重复加载
 ):
     """
     通用：按【单张节拍卡】生成对应的一小节正文，并做轻量校验，返回通过校验的文本（或最后一次结果）。
@@ -1160,6 +1319,27 @@ def generate_segment_for_beat(
 
     punchline_block = ("【让人笑出来的对白示例（请模仿其节奏与梗的密度）】\n" + punchline_examples_text + "\n") if punchline_examples_text else ""
     punchline_embed_block = ("【本小节必须自然融入的互怼对白（保持原意与笑点，可略改叙述衔接）】\n" + punchlines_to_embed + "\n") if punchlines_to_embed else ""
+    
+    # 感动故事线索：根据当前幕和节拍卡位置，融入对应的感动线索
+    touching_storyline_block = ""
+    if touching_storyline:
+        if act_id == "act1":
+            # 第一幕：铺垫阶段，自然融入感动线索的铺垫部分
+            touching_storyline_block = f"\n【感动故事线索（第一幕铺垫阶段，请在本小节中自然融入以下情感元素，不要生硬添加）】\n{touching_storyline}\n"
+        elif act_id == "act2":
+            # 第二幕：发展阶段，感动线索逐渐显现
+            touching_storyline_block = f"\n【感动故事线索（第二幕发展阶段，请在本小节中自然融入以下情感元素，让感动线索逐渐显现）】\n{touching_storyline}\n"
+        elif act_id == "act3":
+            # 第三幕：高潮与收束阶段
+            if beat_index >= total_beats - 1:  # 最后1-2张节拍卡，重点突出感动
+                # 如果已经传入了感动结局示例，直接使用；否则才加载（避免重复加载）
+                if touching_ending_examples is None:
+                    touching_ending_examples = get_touching_ending_examples()
+                touching_examples_block = f"\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}\n" if touching_ending_examples else ""
+                touching_storyline_block = f"\n【感动故事线索（第三幕高潮与收束阶段，本小节是结局部分，必须重点突出感动元素，达到感动高潮）】\n{touching_storyline}\n{touching_examples_block}"
+            else:
+                # 第三幕的其他节拍卡，继续发展感动线索
+                touching_storyline_block = f"\n【感动故事线索（第三幕高潮与收束阶段，请在本小节中继续发展感动线索，为结局做准备）】\n{touching_storyline}\n"
 
     special_constraints = ""
     if act_id == "act2":
@@ -1176,7 +1356,13 @@ def generate_segment_for_beat(
         special_constraints = """
 【第三幕收束约束】
 - 必须围绕"选择与代价-世界后果-收束画面"这一结局三件套推进，不要开启新支线。
-- 保持整体牺牲感和庄重感，但允许在整幕范围内穿插1-2处贴合人物性格的轻描淡写式幽默，优先落在对白或内心独白里，用于缓和情绪，与前两幕的幽默基调形成呼应，绝不能削弱牺牲感。
+- 【结局情感要求（重点）】：第三幕结局必须偏向感动，可以包含以下情感元素：
+  * 自我牺牲：主角为了完成使命，付出巨大代价（如身体消散、化作万物、耗尽力量等）
+  * 深情守护：主角对世界、对他人、对亲人的深情守护和付出
+  * 感人收束：通过环境变化、人物反应、情感升华等方式，营造感人的收束氛围
+  * 情感共鸣：通过副角/旁观者的反应、对话、动作等，增强情感共鸣
+- 保持整体牺牲感和庄重感，但允许在整幕范围内穿插1-2处贴合人物性格的轻描淡写式幽默，优先落在对白或内心独白里，用于缓和情绪，与前两幕的幽默基调形成呼应，绝不能削弱牺牲感和感动效果。
+- 结局部分（最后1-2张节拍卡）应重点突出感动元素，可以包含：主角的牺牲/付出、环境的改变、他人的反应、情感的升华等。
 """
 
     user_content = f"""
@@ -1199,6 +1385,7 @@ def generate_segment_for_beat(
 - 禁止项：{beat.get('禁止项', '')}
 {punchline_block}
 {punchline_embed_block}
+{touching_storyline_block}
 {special_constraints}
 
 【写作硬性要求】
@@ -1408,29 +1595,72 @@ def generate_myth_rewrite(prompt):
                 print(f"  节拍卡{i}：{beat}")
     print("=== 节拍卡日志结束 ===\n")
     
-    # Step 3: 生成第一幕（使用RAG和第一幕大纲）
+    # Step 3: 生成感动故事线索（基于总体大纲和三幕大纲）
+    print("正在生成感动故事线索...")
+    touching_storyline = generate_touching_storyline(
+        overall_outline,
+        acts_outline['act1'],
+        acts_outline['act2'],
+        acts_outline['act3'],
+        prompt,
+        rag_content
+    )
+    print(f"感动故事线索生成完成：")
+    print(f"  第一幕感动线索：{touching_storyline['act1_touching']}")
+    print(f"  第二幕感动线索：{touching_storyline['act2_touching']}")
+    print(f"  第三幕感动线索：{touching_storyline['act3_touching']}\n")
+    
+    # Step 4: 生成第一幕（使用RAG和第一幕大纲，融入第一幕感动线索）
     print("正在生成第一幕...")
-    act1 = generate_act1(acts_outline['act1'], overall_outline, rag_content, prompt, acts_outline.get('act1_beats'))
+    act1 = generate_act1(
+        acts_outline['act1'],
+        overall_outline,
+        rag_content,
+        prompt,
+        acts_outline.get('act1_beats'),
+        touching_storyline=touching_storyline['act1_touching']
+    )
     print(f"第一幕生成完成（{len(act1)}字）\n")
     
-    # Step 4: 生成第二幕（使用第二幕大纲和第一幕作为上下文）
+    # Step 5: 生成第二幕（使用第二幕大纲和第一幕作为上下文，融入第二幕感动线索）
     print("正在生成第二幕...")
-    act2 = generate_act2(acts_outline['act2'], overall_outline, act1, prompt, acts_outline.get('act2_beats'))
+    act2 = generate_act2(
+        acts_outline['act2'],
+        overall_outline,
+        act1,
+        prompt,
+        acts_outline.get('act2_beats'),
+        touching_storyline=touching_storyline['act2_touching']
+    )
     print(f"第二幕生成完成（{len(act2)}字）\n")
     
-    # Step 5: 生成第三幕（使用第三幕大纲和第二幕作为上下文）
+    # Step 6: 生成第三幕（使用第三幕大纲和第二幕作为上下文，融入第三幕感动线索）
     print("正在生成第三幕...")
-    act3 = generate_act3(acts_outline['act3'], overall_outline, act2, prompt, acts_outline.get('act3_beats'))
+    act3 = generate_act3(
+        acts_outline['act3'],
+        overall_outline,
+        act2,
+        prompt,
+        acts_outline.get('act3_beats'),
+        touching_storyline=touching_storyline['act3_touching']
+    )
     print(f"第三幕生成完成（{len(act3)}字）\n")
     
-    # Step 6: 拼接三幕
+    # Step 7: 拼接三幕
     final_script = act1 + "\n\n" + act2 + "\n\n" + act3
     final_script = clean_story_postprocess(final_script)
     
-    # Step 7: 验证结构
+    # Step 8: 验证结构
     if not validate_script(final_script):
         print("警告：脚本结构验证失败，正在重新生成第三幕...")
-        act3 = generate_act3(acts_outline['act3'], overall_outline, act2, prompt, acts_outline.get('act3_beats'))
+        act3 = generate_act3(
+            acts_outline['act3'],
+            overall_outline,
+            act2,
+            prompt,
+            acts_outline.get('act3_beats'),
+            touching_storyline=touching_storyline['act3_touching']
+        )
         final_script = act1 + "\n\n" + act2 + "\n\n" + act3
         final_script = clean_story_postprocess(final_script)
     
