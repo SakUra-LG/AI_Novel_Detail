@@ -5,6 +5,7 @@ import dashscope as dashscope
 from config import API_Key_QW
 from Search_content import *
 from Search_profession import *
+from humor_levels.humor_level_generator import generate_humor_level_versions
 
 def clean_markdown(text):
     """去除 Markdown 格式符号"""
@@ -2453,6 +2454,28 @@ def chat_once(prompt):
     reply = call_qianwen_api([system_message, user_message])    
     return clean_markdown(reply)
 
+
+def should_generate_humor_levels(prompt: str) -> bool:
+    """
+    判断用户是否明确要求输出1~5级幽默强度版本。
+    """
+    trigger_keywords = [
+        "1~5级", "1-5级", "1到5级", "五个版本", "5个版本",
+        "幽默强度", "幽默等级", "分级幽默", "分级版本"
+    ]
+    return any(keyword in prompt for keyword in trigger_keywords)
+
+
+def generate_myth_rewrite_humor_levels(prompt: str):
+    """
+    基于同一神话改写需求，生成1~5级幽默强度版本，并落盘保存。
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_root = os.path.join(current_dir, "outputs", "神话改写", "幽默等级")
+    outputs, output_dir = generate_humor_level_versions(prompt, generate_myth_rewrite, output_root)
+    print(f"\n幽默分级版本已保存到：{output_dir}")
+    return outputs
+
 # 主函数：一次对话后直接退出
 if __name__ == "__main__":
     prompt = input("请输入你的问题: ").strip()
@@ -2465,12 +2488,21 @@ if __name__ == "__main__":
         ]
 
         if any(keyword in prompt for keyword in myth_keywords):
-            answer = generate_myth_rewrite(prompt)
+            if should_generate_humor_levels(prompt):
+                level_outputs = generate_myth_rewrite_humor_levels(prompt)
+                print("\n=== 创作结果（幽默强度1~5级）===\n")
+                for level in range(1, 6):
+                    print(f"\n--- 幽默强度{level}级 ---\n")
+                    print(level_outputs.get(level, ""))
+                answer = None
+            else:
+                answer = generate_myth_rewrite(prompt)
         # 判断是否为武打场景需求
         elif any(keyword in prompt for keyword in ['武打', '战斗', '对决', '打斗', '比武']):
             answer = generate_fight_scene_with_reversal(prompt)
         else:
             answer = chat_once(prompt)
         
-        print("\n=== 创作结果 ===\n")
-        print(answer)
+        if answer is not None:
+            print("\n=== 创作结果 ===\n")
+            print(answer)

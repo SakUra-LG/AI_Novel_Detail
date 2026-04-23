@@ -1,11 +1,13 @@
 import torch
 import numpy as np
 import json
+import os
 from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 
 # 配置
-model_path = "./bge_large_zh"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "bge_large_zh")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 加载模型
@@ -35,10 +37,12 @@ def load_knowledge_base():
     """加载知识库（向量 + 文章内容）"""
     try:
         # 加载主题向量
-        theme_vectors = np.load('knowledgeBase/features_Theme.npy')
+        theme_vectors_path = os.path.join(BASE_DIR, 'knowledgeBase', 'features_Theme.npy')
+        theme_vectors = np.load(theme_vectors_path)
 
         # 加载文章内容（json 文件）
-        with open('knowledgeBase/themes_Content.json', 'r', encoding='utf-8') as f:
+        themes_content_path = os.path.join(BASE_DIR, 'knowledgeBase', 'themes_Content.json')
+        with open(themes_content_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             articles = data.get("articles", [])
 

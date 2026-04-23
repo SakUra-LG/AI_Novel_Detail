@@ -1,11 +1,13 @@
 import torch
 import numpy as np
 import json
+import os
 from transformers import AutoTokenizer, AutoModel
 from sklearn.metrics.pairwise import cosine_similarity
 
 # 配置
-model_path = "./bge_large_zh"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, "bge_large_zh")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 加载模型
@@ -17,10 +19,12 @@ def load_profession_knowledge():
     """加载专业知识库"""
     try:
         # 加载向量
-        vectors = np.load('knowledgeBase/features_profession.npy')
+        vectors_path = os.path.join(BASE_DIR, 'knowledgeBase', 'features_profession.npy')
+        vectors = np.load(vectors_path)
 
         # 加载元数据
-        with open('knowledgeBase/features_profession.json', 'r', encoding='utf-8') as f:
+        features_profession_path = os.path.join(BASE_DIR, 'knowledgeBase', 'features_profession.json')
+        with open(features_profession_path, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
 
         # 验证数据一致性
