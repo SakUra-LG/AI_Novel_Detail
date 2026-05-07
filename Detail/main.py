@@ -1,11 +1,85 @@
 import re
 import time
 import os
-import dashscope as dashscope
+import sys
+
+try:
+    import dashscope as dashscope
+except ModuleNotFoundError as exc:
+    missing_pkg = getattr(exc, "name", "dashscope")
+    raise SystemExit(
+        "缺少运行依赖："
+        f"{missing_pkg}\n"
+        "请先在项目目录执行：\n"
+        "python -m pip install -r requirements.txt\n"
+        "如果你有多套 Python，请先确认当前解释器：\n"
+        "python -c \"import sys; print(sys.executable)\""
+    ) from exc
+
 from config import API_Key_QW
-from Search_content import *
-from Search_profession import *
+try:
+    from Search_content import *
+    from Search_profession import *
+except ModuleNotFoundError as exc:
+    missing_pkg = getattr(exc, "name", "未知依赖")
+    raise SystemExit(
+        "缺少运行依赖："
+        f"{missing_pkg}\n"
+        "请先在项目目录执行：\n"
+        "python -m pip install -r requirements.txt\n"
+        "若仍报错，请检查是否用了错误的 Python 解释器：\n"
+        "python -c \"import sys; print(sys.executable)\""
+    ) from exc
+
 from humor_levels.humor_level_generator import generate_humor_level_versions
+
+
+MYTH_TARGET_TOTAL_MIN = 6000
+MYTH_TARGET_TOTAL_MAX = 8000
+MYTH_ACT_TARGETS = {
+    "act1": (1450, 1850),
+    "act2": (2300, 2900),
+    "act3": (1450, 1850),
+}
+
+BAD_META_PHRASES = [
+    "[因原文长度限制未能全部提供]",
+    "未完待续",
+    "欢迎提出进一步请求",
+    "若您有兴趣了解更多详情",
+    "下面是故事",
+    "参考内容如下",
+    "本故事到此结束",
+    "[此时应",
+    "典型的互动场景",
+    "此处插入",
+    "符合要求",
+    "画面要素",
+    "感情线渐进",
+    "推动主题",
+    "插入对白互动",
+]
+
+BAD_PLAN_TERMS = [
+    "不明人士帮助信号",
+    "神秘人暗中相助",
+    "幕后之人",
+    "灵魂交换转换修复工程",
+    "修复工程",
+    "紧急救助程序",
+    "程序介入",
+    "最大规模致命一击行为",
+    "命运审判仪式",
+    "超级火炬",
+    "防护罩",
+    "屏障显现",
+    "外挂式助力系统",
+    "工作机制",
+    "星域",
+    "工程",
+    "机制",
+    "系统",
+]
 
 def clean_markdown(text):
     """去除 Markdown 格式符号"""
@@ -246,6 +320,7 @@ def get_myth_system_prompt_base(reference_content=None):
             - 以【人物性格驱动的幽默感】为第一优先，其次再在合适处自然点缀情感；
             - 亲子/家庭情感线是【可选加分项】，如果题材或用户需求合适，可以适度呈现"被误解的孩子"和"笨拙但真心的长辈"，但禁止为了完成任务强行煽情。
             - 这是用于视频创作的初版脚本，人读后才会拍成视频，需要兼顾可读性和影视化潜力。
+            - 本次默认目标是生成可支撑 10 分钟视频的【长篇版本】。允许在不改变原神话骨架的前提下，加入【功能性扩展场景】：筹备、赶路、试探、失败尝试、旁观者反应、余波处理、关系推进、情感伏笔回收。但新增场景必须服务于主线推进、动作细化、幽默、情感或后果展示，不能写成无关废话。
 
             【神话骨架强约束（不可违反，所有神话通用）】
             - 本文必须完整讲述所选原版神话从开端到结尾的全部关键事件链（例如"十日并出 → 射落九日 → 留下一日 → 天地转好"之于"后羿射日"），不得跳过或模糊处理核心节点。
@@ -316,7 +391,7 @@ def get_myth_system_prompt_base(reference_content=None):
               - 每个节拍卡对应的小节中，【至少 3 个笑点】，且【至少 2 个必须是对话笑点】（甲说—乙接，或甲吐槽—乙拆台/接梗）。非关键庄重节拍可要求【至少 2 个对话笑点】。
               - 严禁大段只有主角独白、没有他人接话的段落；主角连续自言自语不得超过 2 句，第三句须被副角打断或接话，形成对白。
               - 世界观、灾情、任务目标等尽量通过【副角提问、主角/他人回答、再被拆台】的多轮对白展开，禁止整段用主角内心独白交代背景。
-            - 【幽默密度】整篇约 2100-2600 字时，总笑点目标【15-22 处】，每幕约 5-8 处；其中对白笑点不少于 9-12 处。单次笑点 1-2 句话，可连续 2 句「一抛一接」。
+            - 【幽默密度】整篇约 6000-8000 字时，总笑点目标【28-42 处】，三幕都要有稳定笑点分布；其中对白笑点应占多数。单次笑点 1-2 句话，可连续 2 句「一抛一接」。
             - 【「让人笑出来」的强笑点】每幕至少 1–2 处笑点须达到**读者读到能笑出来**的强度：拆台要**一句到位、有梗**（如主角说「咱们去救苍生」→ 副角立刻接「救完苍生能先救救我的腿吗」），避免温吞水、敷衍式接话。可多用「一抛一接」的爆点、错位理解的反转、干脆的吐槽，目标是有几处能让读者真的笑出声。
             - 【必须参考样本集】：下附【全部】哪吒风格参考样本，请务必参考其对话节奏、拆台方式、生活化吐槽与亲子/师徒互怼。写作时可在文中**穿插若干仿写哪吒风格的幽默点**（如嘴硬心软、生活化比喻、一人正经一人拆台），但不要通篇都是哪吒口吻，以本神话人物与情境为主。
             - 【禁止内容】：现代职场/网络流行语（打工人、内卷、绝了等）、低俗/身体羞辱/虐人取乐、破坏神话世界观的设定。**禁止骂人、辱骂、人身攻击等低俗幽默方式**；互怼调侃仅限于「逗、皮、嘴硬」，不得出现脏话、骂街、贬损人格。其余以「好笑、对白多、类型多样」为准。
@@ -463,6 +538,44 @@ def get_myth_system_prompt_base(reference_content=None):
               3）任何非正常文本的符号组合。
             - 【偏向小说风格】可以适当弱化剧本的格式，更偏向于小说风格。动作和场景描写要融入叙述中，不要用括号标注或单独列出。采用正常中文小说的分段方式和叙述风格。
             - 【纯故事正文】输出的内容必须是纯故事正文，没有任何元文本、系统提示、道歉、回顾、统计、空行、奇怪格式符号等。读者看到的内容应该就是完整的故事，没有任何其他内容。
+            {rag_part}
+    """
+
+
+def get_myth_planning_prompt(reference_content=None):
+    """
+    用于总体大纲/分幕/节拍卡生成的精简规划提示词。
+    规划阶段强调结构化、完整性和可执行性，避免把太多正文写作要求压给模型。
+    """
+    rag_part = f"参考内容：{reference_content if reference_content else '无'}" if reference_content else "参考内容：无"
+    return f"""
+            角色：你是中国神话改写项目的故事规划师，只负责产出稳定、完整、结构化的大纲与节拍卡，不写正文。
+
+            规划总原则：
+            - 保留原神话核心事件链、关键因果、最终结局和核心寓意。
+            - 故事风格允许偏幽默、偏人物互怼，但不能破坏神话主线。
+            - 本项目目标篇幅为 6000~8000 字，因此你必须主动设计足够多的【功能性扩展场景】。
+            - 功能性扩展场景只能用于：补动作过程、补人物关系、补笑点、补情绪推进、补结果余波。
+            - 禁止为了凑字数加入与主线无关的支线、设定或新势力。
+
+            规划硬约束：
+            - 输出必须结构化、明确、可解析。
+            - 第二幕必须承担最多的关键动作过程，不能一笔带过。
+            - 节拍卡数量必须充足：
+              * 第一幕：5~6 张
+              * 第二幕：8~9 张
+              * 第三幕：5~6 张
+            - 每张节拍卡都必须具体，不能写成空泛的“继续推进剧情”“制造冲突”。
+            - 固定拆台副角必须贯穿三幕，承担稳定的对白笑点和情感回收功能。
+            - 第三幕结尾必须保留感动收束空间。
+            - 节拍卡的事件类型必须贴近神话主线，只允许：背景建立、筹备、赶路、试探、动作执行、失败尝试、环境阻力、旁观反应、关系推进、余波收束。
+            - 严禁把节拍卡写成“战斗关卡设计”“系统任务说明”“科幻工程说明”或“神秘势力阴谋提示”。
+            - 严禁出现抽象而失真的目标词，例如：不明人士帮助信号、修复工程、程序介入、命运审判仪式、系统、机制、工程、星域、屏障、防护罩、外挂等。
+
+            输出边界：
+            - 只输出大纲和节拍卡，不写正文，不写解释，不写道歉。
+            - 不要使用英文，不要写元文本，不要写“以下是”“说明如下”。
+
             {rag_part}
     """
 
@@ -724,22 +837,25 @@ def generate_outline(theme, rag_content):
     """
     system_message = {
         "role": "system",
-        "content": get_myth_system_prompt_base(rag_content) + f"""
+        "content": get_myth_planning_prompt(rag_content) + f"""
             请为神话改写《{theme}》生成完整的总体大纲：
             
             要求：
             - 生成一个完整的故事大纲，包含从开始到结束的完整故事线
             - 大纲应包含：故事背景、主要人物、核心冲突、关键事件、故事结局
-            - 大纲长度约300-400字
+            - 大纲长度约500-700字
             - 风格：类似电影《哪吒降世》的幽默改写
             - 必须确保故事线完整，有明确的起承转合
             - 大纲中须明确交代至少一名【固定拆台副角】的姓名与身份（如小徒弟阿狗、随从铁柱），该角色将贯穿全文与主角对嘴互怼、制造笑点，不能只有路人或无名群众。
+            - 全篇最终目标是生成 6000~8000 字的长篇神话改写，所以总体大纲必须比普通版本更厚实，除了原神话主干事件，还要主动加入【功能性扩展场景】。
+            - 允许新增但必须受控的【功能性扩展场景】包括：踏上行动前的筹备、途中见闻、第一次失败尝试、民间/旁观者反应、主角与固定副角的争执或互相打气、阶段性喘息、行动后的余波收束。
+            - 这些新增场景必须服务于以下至少一项：增强幽默、拉长动作过程、补足人物关系、强化情感伏笔、推动主线决策。严禁加入与主线无关的闲笔。
         """
     }
     
     user_message = {
         "role": "user",
-        "content": f"请为神话改写《{theme}》生成完整的总体大纲（300-400字），包含从开始到结束的完整故事线。"
+        "content": f"请为神话改写《{theme}》生成完整的总体大纲（500-700字），包含从开始到结束的完整故事线，并主动加入可服务于长篇扩写的功能性扩展场景。"
     }
     
     reply = call_qianwen_api(
@@ -747,7 +863,7 @@ def generate_outline(theme, rag_content):
         temperature=0.8,
         top_p=0.9,
         repetition_penalty=1.2,
-        max_tokens=1000
+        max_tokens=1600
     )
     return clean_markdown(reply)
 
@@ -762,13 +878,13 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     """
     system_message = {
         "role": "system",
-        "content": get_myth_system_prompt_base(rag_content) + f"""
+        "content": get_myth_planning_prompt(rag_content) + f"""
             请根据总体大纲，按【背景→高潮过程→结果】三幕结构分配，生成三幕分别的【详细】大纲和【镜头节拍卡】。
             
             【三幕定位与篇幅比例（必须严格遵守）】
-            - 第一幕【背景】：灾因/世界设定/人物登场/为何非做不可/踏上征程。篇幅占比约 25%，大纲约 200-280 字，必须写清「十日并出」类背景、主角处境、同伴如何登场等，不能省略关键背景信息。
-            - 第二幕【高潮过程】：核心行动的完整过程，必须展开为具体步骤，不能一笔带过。例如后羿射日必须包含：抵达山顶、面对十日、逐箭射落（可分组但要有「第几箭/射落第几个太阳」的递进）、留下最后一日的决策、体力/代价的描写。篇幅占比约 50%，大纲约 350-450 字，节拍卡数量为本幕 6-8 张，确保「过程」被拆成多小节写满。
-            - 第三幕【结果】：行动完成后的世界变化、民众反应、主角收束与结局寓意。篇幅占比约 25%，大纲约 200-280 字。
+            - 第一幕【背景】：灾因/世界设定/人物登场/为何非做不可/踏上征程。篇幅占比约 28%，大纲约 300-420 字，必须写清「十日并出」类背景、主角处境、同伴如何登场等，不能省略关键背景信息。允许加入筹备、试探、民间反应、赶路插曲等功能性扩展场景。
+            - 第二幕【高潮过程】：核心行动的完整过程，必须展开为具体步骤，不能一笔带过。例如后羿射日必须包含：抵达山顶、面对十日、逐箭射落（可分组但要有「第几箭/射落第几个太阳」的递进）、留下最后一日的决策、体力/代价的描写。篇幅占比约 44%，大纲约 450-620 字，节拍卡数量为本幕 8-9 张，确保「过程」被拆成多小节写满，并允许加入与主线强相关的短暂喘息、失败尝试、环境阻力、同伴互怼等扩展场景。
+            - 第三幕【结果】：行动完成后的世界变化、民众反应、主角收束与结局寓意。篇幅占比约 28%，大纲约 300-420 字。允许加入余波处理、人物关系回收、情感回应、世界复苏细节等扩展场景，但必须仍然收束到原神话结局。
             
             【关键情节点保留（不可违反）】
             - 分幕时必须从总体大纲中逐条提取关键事件，分配到对应幕中，不得丢失或合并成模糊表述。
@@ -778,13 +894,14 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
             要求：
             - 三幕之间必须承接，不能重复；第一幕结尾要自然衔接到第二幕的开端（如「抵达」「开始行动」）。
             - 每幕大纲要具体、可执行，包含该幕内应出现的具体事件、情节点和必要细节，便于后续按节拍卡逐段写作时不漏情节。
+            - 为了支撑 6000~8000 字长篇成稿，每幕都要主动安排若干【功能性扩展节拍】。这些节拍只能用于：补动作、补关系、补笑点、补情绪推进、补后果展示，严禁单纯凑字数。
             - 【节拍卡与大纲严格对齐（关键要求）】：
               * 节拍卡必须严格按照本幕大纲中的关键情节点顺序生成，每张节拍卡的"场景目标"必须直接对应大纲中的一个或多个具体事件，不能偏离大纲内容。
               * 节拍卡的数量和顺序必须覆盖大纲中的所有关键情节点，不能遗漏大纲中提到的任何重要事件，也不能添加大纲中没有的新情节。
               * 例如：如果第二幕大纲写了"抵达山顶、面对十日、射落第1个太阳、射落第2-3个太阳、射落第4-6个太阳、射落第7-9个太阳、留下最后一日的决定、体力耗尽"，那么节拍卡必须按照这个顺序，每张节拍卡对应其中一个或几个步骤，不能跳过或打乱顺序。
               * 节拍卡的"场景目标"应该明确写出对应大纲中的哪个具体事件（如"射落第1个太阳"而不是模糊的"开始射箭"），确保节拍卡与大纲一一对应。
             - 在设计每张【镜头节拍卡】时，要为后续的幽默留出空间：预留至少一个【对白上的抛接点】和一个【非对白的反差点】（可通过画面要素或情绪推动中的具体细节体现）。
-            - 第一幕输出 4-5 张节拍卡，第二幕输出 6-8 张节拍卡，第三幕输出 4-5 张节拍卡。每张节拍卡必须包含以下字段：
+            - 第一幕输出 5-6 张节拍卡，第二幕输出 8-9 张节拍卡，第三幕输出 5-6 张节拍卡。每张节拍卡必须包含以下字段：
               * 场景目标：这一小段要完成什么叙事功能（铺垫/冲突升级/关键转折/代价/收束等）
               * 画面要素：至少2个可拍摄的画面/动作细节（非抽象词）
               * 情绪推动：角色此刻情绪从A到B（例如烦闷→决断、焦灼→咬牙、崩溃→释然）
@@ -796,7 +913,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
             三幕逻辑总结：
             - 第一幕：背景与动机建立完毕，以「踏上征途/开始行动」类节点收尾。
             - 第二幕：核心行动全过程（步骤化、可数），不跳过任何关键步骤，以「行动完成/最后一击」类节点收尾。
-            - 第三幕：结果、世界状态、人物收束与寓意，必须有明确结局。
+            - 第三幕：结果、世界状态、人物收束与寓意，必须有明确结局与感动收束。
         """
     }
     
@@ -807,15 +924,15 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 {overall_outline}
 
 请将以上总体大纲分配到三幕，按【背景→高潮过程→结果】划分，生成三幕分别的【详细】大纲和【镜头节拍卡】。若总体大纲中已出现【固定拆台副角】的姓名与身份，请在后续节拍卡中延续该角色，确保其贯穿三幕与主角互怼。要求：
-1. 第一幕【背景】大纲（约200-280字）：包含灾因、世界设定、人物登场、为何非做不可、踏上征程等，必须写清神话背景（如十日并出、百姓遭殃），不能省略关键背景。结尾落在「开始行动/上路」。
-2. 第二幕【高潮过程】大纲（约350-450字）：核心行动的完整过程，必须展开为具体步骤。例如后羿射日须写出：抵达山顶、面对十日、逐箭射落（射落第1个…第9个、留下最后一日的决定）、体力与代价。盘古开天须写出：挥斧劈开、撑天、踏地等阶段。不得一笔带过或合并成「他一口气完成了」。
-3. 第三幕【结果】大纲（约200-280字）：行动完成后的世界变化、民众反应、主角收束与结局寓意，不能重复前两幕。
+1. 第一幕【背景】大纲（约300-420字）：包含灾因、世界设定、人物登场、为何非做不可、踏上征程等，必须写清神话背景（如十日并出、百姓遭殃），不能省略关键背景。结尾落在「开始行动/上路」。允许加入筹备、赶路、第一次试探、百姓反应等功能性扩展场景。
+2. 第二幕【高潮过程】大纲（约450-620字）：核心行动的完整过程，必须展开为具体步骤。例如后羿射日须写出：抵达山顶、面对十日、逐箭射落（射落第1个…第9个、留下最后一日的决定）、体力与代价。盘古开天须写出：挥斧劈开、撑天、踏地等阶段。不得一笔带过或合并成「他一口气完成了」。允许加入与主线强相关的失败尝试、环境阻力、同伴互怼、阶段性喘息，但不许跑题。
+3. 第三幕【结果】大纲（约300-420字）：行动完成后的世界变化、民众反应、主角收束与结局寓意，不能重复前两幕。允许加入余波处理、关系回收、世界复苏与情感回应等功能性扩展场景。
 4. 【节拍卡生成关键要求（必须严格遵守）】：
    - 生成大纲后，请先提取每幕大纲中的关键情节点（用序号或分号分隔的各个事件），然后按照这些关键情节点的顺序，逐条生成对应的节拍卡。
    - 每张节拍卡的"场景目标"必须明确对应大纲中的一个具体事件，不能偏离。例如：如果大纲写了"射落第1个太阳"，节拍卡的场景目标就应该是"射落第1个太阳"或"完成射落第1个太阳的动作"，而不是"开始射箭"或"面对困难"等模糊表述。
-   - 节拍卡的数量必须足够覆盖大纲中的所有关键情节点，不能遗漏。如果大纲中有8个关键步骤，就需要至少6-8张节拍卡来覆盖（可以合并相邻的小步骤）。
+   - 节拍卡的数量必须足够覆盖大纲中的所有关键情节点，不能遗漏。如果大纲中有8个关键步骤，就需要更多节拍卡把它们拆细，同时加入紧贴主线的扩展节拍。
    - 节拍卡的顺序必须与大纲中事件的顺序一致，不能打乱。
-5. 第一幕 4-5 张节拍卡，第二幕 6-8 张节拍卡，第三幕 4-5 张节拍卡。每张节拍卡必须包含以下字段：
+5. 第一幕 5-6 张节拍卡，第二幕 8-9 张节拍卡，第三幕 5-6 张节拍卡。每张节拍卡必须包含以下字段：
    - 场景目标：这一小段要完成什么叙事功能
    - 画面要素：至少2个可拍摄的画面/动作细节（非抽象词）
    - 情绪推动：角色此刻情绪从A到B
@@ -843,7 +960,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 信息增量：[新增信息]
 禁止项：[1-2条禁止项]
 
-...（继续输出4-6张节拍卡）
+...（继续输出5-6张节拍卡）
 
 第二幕大纲（xx字）：[第二幕的具体内容]
 
@@ -854,7 +971,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 信息增量：[新增信息]
 禁止项：[1-2条禁止项]
 
-...（继续输出4-6张节拍卡）
+...（继续输出8-9张节拍卡）
 
 第三幕大纲（xx字）：[第三幕的具体内容]
 
@@ -865,7 +982,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 信息增量：[新增信息]
 禁止项：[1-2条禁止项]
 
-...（继续输出4-6张节拍卡）
+...（继续输出5-6张节拍卡）
         """
     }
     
@@ -874,7 +991,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
         temperature=0.7,
         top_p=0.9,
         repetition_penalty=1.2,
-        max_tokens=3000  # 第二幕大纲与节拍卡更长（6-8张），需更多 token
+        max_tokens=5200  # 长篇版本需要更多大纲与节拍卡
     )
     
     # 解析三幕大纲和节拍卡
@@ -954,19 +1071,19 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
                     if match:
                         beat_cards.append({'场景目标': match.group(1).strip(), '画面要素': '', '情绪推动': '', '信息增量': '', '禁止项': ''})
         
-        return beat_cards[:8]  # 第一幕/第三幕最多5张，第二幕最多8张，解析时统一上限8
+        return beat_cards[:9]  # 收紧节拍卡数量上限，避免稀释单卡质量
     
     act1_beats = parse_beat_cards('第一幕', cleaned_reply)
     act2_beats = parse_beat_cards('第二幕', cleaned_reply)
     act3_beats = parse_beat_cards('第三幕', cleaned_reply)
     
     # 验证节拍卡数量是否合理
-    if len(act1_beats) < 4:
-        print(f"警告：第一幕只解析到 {len(act1_beats)} 张节拍卡，建议至少 4-5 张")
-    if len(act2_beats) < 6:
-        print(f"警告：第二幕只解析到 {len(act2_beats)} 张节拍卡，建议至少 6-8 张")
-    if len(act3_beats) < 4:
-        print(f"警告：第三幕只解析到 {len(act3_beats)} 张节拍卡，建议至少 4-5 张")
+    if len(act1_beats) < 5:
+        print(f"警告：第一幕只解析到 {len(act1_beats)} 张节拍卡，建议至少 5-6 张")
+    if len(act2_beats) < 8:
+        print(f"警告：第二幕只解析到 {len(act2_beats)} 张节拍卡，建议至少 8-9 张")
+    if len(act3_beats) < 5:
+        print(f"警告：第三幕只解析到 {len(act3_beats)} 张节拍卡，建议至少 5-6 张")
     
     # 如果解析失败，使用原始回复作为fallback
     if not act1_outline or not act2_outline or not act3_outline:
@@ -988,6 +1105,40 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
         "act2_beats": act2_beats,
         "act3_beats": act3_beats
     }
+
+
+def outline_plan_is_usable(acts_outline: dict) -> bool:
+    """
+    规划结果验收：
+    - 三幕大纲不能为空
+    - 节拍卡数量必须达到长篇最低要求
+    """
+    if not acts_outline:
+        return False
+
+    if not acts_outline.get("act1") or not acts_outline.get("act2") or not acts_outline.get("act3"):
+        return False
+
+    if len(acts_outline.get("act1_beats", [])) < 5:
+        return False
+    if len(acts_outline.get("act2_beats", [])) < 8:
+        return False
+    if len(acts_outline.get("act3_beats", [])) < 5:
+        return False
+
+    for beat_group in (
+        acts_outline.get("act1_beats", []),
+        acts_outline.get("act2_beats", []),
+        acts_outline.get("act3_beats", []),
+    ):
+        for beat in beat_group:
+            beat_text = " ".join(
+                str(beat.get(k, "")) for k in ["场景目标", "画面要素", "信息增量", "禁止项"]
+            ) if isinstance(beat, dict) else str(beat)
+            if any(term in beat_text for term in BAD_PLAN_TERMS):
+                return False
+
+    return True
 
 
 def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act3_outline, prompt, rag_content):
@@ -1142,10 +1293,10 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
         }]
 
     total_beats = len(act1_beats)
-    # 第一幕【背景】篇幅约 25%，目标 500~700 字
-    target_min_total, target_max_total = 500, 700
-    base_min = max(100, target_min_total // total_beats - 30)
-    base_max = target_max_total // total_beats + 40
+    # 第一幕【背景】长篇版本目标 1600~2100 字
+    target_min_total, target_max_total = MYTH_ACT_TARGETS["act1"]
+    base_min = max(220, target_min_total // total_beats - 25)
+    base_max = target_max_total // total_beats + 45
 
     segments = []
     accumulated_text = ""
@@ -1206,10 +1357,10 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
         }]
 
     total_beats = len(act2_beats)
-    # 第二幕【高潮过程】篇幅约 50%，目标 1100~1400 字，确保核心过程写满
-    target_min_total, target_max_total = 1100, 1400
-    base_min = max(130, target_min_total // total_beats - 40)
-    base_max = target_max_total // total_beats + 50
+    # 第二幕【高潮过程】长篇版本目标 2600~3400 字，确保核心过程写满
+    target_min_total, target_max_total = MYTH_ACT_TARGETS["act2"]
+    base_min = max(240, target_min_total // total_beats - 20)
+    base_max = target_max_total // total_beats + 55
 
     segments = []
     # 将第一幕全文作为"更早前文"，帮助第二幕承接，但在单节生成时只截取尾部片段
@@ -1266,10 +1417,10 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
         }]
 
     total_beats = len(act3_beats)
-    # 第三幕【结果】篇幅约 25%，目标 500~700 字
-    target_min_total, target_max_total = 500, 700
-    base_min = max(120, target_min_total // total_beats - 30)
-    base_max = target_max_total // total_beats + 40
+    # 第三幕【结果】长篇版本目标 1600~2100 字
+    target_min_total, target_max_total = MYTH_ACT_TARGETS["act3"]
+    base_min = max(220, target_min_total // total_beats - 25)
+    base_max = target_max_total // total_beats + 45
 
     segments = []
     # 将第二幕全文作为"更早前文"，帮助第三幕承接，在单节生成时只截取尾部片段
@@ -1427,6 +1578,7 @@ def clean_story_postprocess(text: str) -> str:
     - 删除英文单词，避免 knot/back/shoulders 这类夹杂破坏时代感
     - 删除形如"（这段共xxx字）"的括号字数提示
     - 保留正常中文与标点
+    - 删除中文之间误插入的空格
     """
     if not text:
         return text
@@ -1438,9 +1590,119 @@ def clean_story_postprocess(text: str) -> str:
     text = re.sub(r'（这段共[^）]*字）', '', text)
     text = re.sub(r'\(这段共[^)]*字\)', '', text)
 
+    # 删掉中文字符之间误插入的空格
+    text = re.sub(r'(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])', '', text)
+
     # 再清理可能多出来的多余空格
     text = re.sub(r'[ ]{2,}', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
+
+
+def has_obvious_garbled_text(text: str) -> bool:
+    """
+    检测明显的乱码/跑偏/格式污染：
+    - 常见未完成提示
+    - emoji/装饰符号
+    - 英文夹杂过多
+    - 繁体字过多
+    - 连续异常标点
+    """
+    if not text:
+        return True
+
+    if any(phrase in text for phrase in BAD_META_PHRASES):
+        return True
+
+    if re.search(r'[\U0001F300-\U0001FAFF]', text):
+        return True
+
+    if re.search(r'[;；]{4,}|[.。]{5,}|[!！?？]{4,}', text):
+        return True
+
+    if re.search(r'\[[^\]]{0,40}(插入|互动场景|待补|补写)[^\]]{0,40}\]', text):
+        return True
+
+    if any(phrase in text for phrase in BAD_META_PHRASES):
+        return True
+
+    meta_like_patterns = [
+        r'（此处[^）]{0,30}插入[^）]*）',
+        r'（这段[^）]{0,30}符合要求[^）]*）',
+        r'（[^）]{0,20}画面要素[^）]*）',
+        r'（[^）]{0,20}感情线[^）]*）',
+        r'（[^）]{0,20}推动主题[^）]*）',
+        r'\([^)]{0,30}(插入|画面要素|感情线|推动主题)[^)]*\)',
+    ]
+    if any(re.search(pattern, text) for pattern in meta_like_patterns):
+        return True
+
+    latin_hits = re.findall(r'[A-Za-z]{2,}', text)
+    if len(latin_hits) >= 5:
+        return True
+
+    trad_chars = set("萬與專業東絲兩嚴個豐臨為麗舉樂鄉書買亂爭於雲亞產畢實寧眾優會傢價億債傷傾後門風體們發戰愛國頭聲靜場這顏顯點說師來個們為後時")
+    trad_count = sum(1 for ch in text if ch in trad_chars)
+    if trad_count >= max(8, len(text) // 180):
+        return True
+
+    # 过长无停顿句通常意味着模型在堆砌空话
+    long_sentences = [
+        s for s in re.split(r'[。！？\n]', text)
+        if len(re.sub(r'\s+', '', s)) >= 180
+    ]
+    if len(long_sentences) >= 3:
+        return True
+
+    # “宏大套话”连续堆叠的特征
+    repetitive_phrases = ['与此同时', '总而言之', '综上所述', '这才是', '发展前景', '各个方面', '共同发展']
+    repetitive_hits = sum(text.count(p) for p in repetitive_phrases)
+    if repetitive_hits >= 12:
+        return True
+
+    return False
+
+
+def validate_story_quality(text: str, prompt: str = "") -> bool:
+    """
+    长篇神话改写的最终质量验收：
+    - 字数达到 6000~8000 的目标区间附近
+    - 无明显乱码/元文本污染
+    - 句号逗号密度正常，不是单纯堆字
+    - 与主题至少有若干关键字重合，降低跑题概率
+    """
+    if not text:
+        return False
+
+    if len(text) < MYTH_TARGET_TOTAL_MIN:
+        return False
+
+    if has_obvious_garbled_text(text):
+        return False
+
+    punctuation_count = sum(text.count(p) for p in "，。！？")
+    if punctuation_count < max(120, len(text) // 45):
+        return False
+
+    if prompt:
+        prompt_keywords = [k for k in re.findall(r'[\u4e00-\u9fff]{2,4}', prompt) if len(k) >= 2]
+        prompt_keywords = list(dict.fromkeys(prompt_keywords))[:10]
+        if prompt_keywords:
+            hit_count = sum(1 for k in prompt_keywords if k in text)
+            if hit_count < max(2, min(4, len(prompt_keywords) // 2)):
+                return False
+
+    # 至少要有比较均匀的分段，否则大概率是大段灌水
+    non_empty_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(non_empty_lines) < 18:
+        return False
+
+    # 单行过长过多，说明模型在拉长套话
+    ultra_long_lines = [line for line in non_empty_lines if len(line) >= 260]
+    if len(ultra_long_lines) >= max(4, len(non_empty_lines) // 5):
+        return False
+
+    return True
 
 
 def _extract_keywords(text: str) -> list:
@@ -1469,6 +1731,8 @@ def validate_single_beat_segment(seg: str, beat: dict, min_len: int = 60) -> boo
         return False
     seg = seg.strip()
     if len(seg) < min_len:
+        return False
+    if has_obvious_garbled_text(seg):
         return False
 
     visuals = _extract_keywords(beat.get('画面要素', '') or '')
@@ -1639,7 +1903,7 @@ def generate_segment_for_beat(
             temperature=temp,
             top_p=0.9,
             repetition_penalty=1.35,
-            max_tokens=800
+            max_tokens=1200
         )
         cleaned = clean_markdown(reply_local)
         return fix_punctuation_and_paragraphs(cleaned)
@@ -1839,7 +2103,7 @@ def generate_act3_ending_beat(
             temperature=temp,
             top_p=0.9,
             repetition_penalty=1.35,
-            max_tokens=800
+            max_tokens=1200
         )
         cleaned = clean_markdown(reply_local)
         return fix_punctuation_and_paragraphs(cleaned)
@@ -1901,17 +2165,9 @@ def validate_touching_ending(act3_text: str, memory_hooks: list = None) -> bool:
 
 def validate_script(script):
     """
-    验证脚本结构完整性
+    验证长篇神话改写整体质量
     """
-    if "第一幕" not in script:
-        return False
-    if "第二幕" not in script:
-        return False
-    if "第三幕" not in script:
-        return False
-    if len(script) < 1800:
-        return False
-    return True
+    return validate_story_quality(script)
 
 
 def generate_myth_rewrite(prompt):
@@ -1923,12 +2179,27 @@ def generate_myth_rewrite(prompt):
     # Step 1: 生成总体大纲（使用RAG）
     print("正在生成总体大纲...")
     rag_content = searchresult_content(prompt)
-    overall_outline = generate_outline(prompt, rag_content)
+    overall_outline = ""
+    for outline_try in range(3):
+        overall_outline = generate_outline(prompt, rag_content)
+        if overall_outline and len(overall_outline) >= 250 and not has_obvious_garbled_text(overall_outline):
+            break
+        print(f"警告：总体大纲质量不足，正在重试第 {outline_try + 2} 次...")
     print(f"总体大纲生成完成：\n{overall_outline}\n")
     
     # Step 2: 将总体大纲分配到三幕
     print("正在将总体大纲分配到三幕...")
     acts_outline = split_outline_to_acts(overall_outline, prompt, rag_content)
+    if not outline_plan_is_usable(acts_outline):
+        print("警告：首次分幕/节拍卡规划不足，正在使用更强提示重试...")
+        retry_prompt = prompt + "。请严格生成足量节拍卡，尤其第二幕必须给出10到12张节拍卡，禁止少于该数量。"
+        for _ in range(2):
+            refreshed_outline = generate_outline(retry_prompt, rag_content)
+            if refreshed_outline and len(refreshed_outline) > len(overall_outline) // 2:
+                overall_outline = refreshed_outline
+            acts_outline = split_outline_to_acts(overall_outline, retry_prompt, rag_content)
+            if outline_plan_is_usable(acts_outline):
+                break
     print(f"第一幕大纲：\n{acts_outline['act1']}\n")
     print(f"第二幕大纲：\n{acts_outline['act2']}\n")
     print(f"第三幕大纲：\n{acts_outline['act3']}\n")
@@ -2041,13 +2312,13 @@ def generate_myth_rewrite(prompt):
     )
     print(f"第三幕生成完成（{len(act3)}字）\n")
     
-    # Step 7: 拼接三幕
+    # Step 8: 拼接三幕
     final_script = act1 + "\n\n" + act2 + "\n\n" + act3
     final_script = clean_story_postprocess(final_script)
     
-    # Step 8: 验证结构
-    if not validate_script(final_script):
-        print("警告：脚本结构验证失败，正在重新生成第三幕...")
+    # Step 9: 验证整体质量，若总长不足或结尾质量不好，则重写第三幕补足尾段与收束
+    if not validate_story_quality(final_script, prompt):
+        print("警告：长篇脚本整体质量未达标，正在重新生成第三幕以补足长度与收束...")
         act3 = generate_act3(
             acts_outline['act3'],
             overall_outline,
@@ -2059,6 +2330,28 @@ def generate_myth_rewrite(prompt):
         )
         final_script = act1 + "\n\n" + act2 + "\n\n" + act3
         final_script = clean_story_postprocess(final_script)
+
+    # Step 10: 仍然过短时，放大第二幕重写一次，优先补充动作过程和功能性场景
+    if len(final_script) < MYTH_TARGET_TOTAL_MIN:
+        print("警告：总字数仍不足，正在扩写第二幕...")
+        act2 = generate_act2(
+            acts_outline['act2'],
+            overall_outline,
+            act1,
+            prompt + "。请进一步写满核心行动过程，增加与主线强相关的动作分解、环境阻力、阶段性尝试、同伴互怼与情绪递进，但不要跑题。",
+            acts_outline.get('act2_beats'),
+            touching_storyline=touching_storyline['act2_touching']
+        )
+        act3 = generate_act3(
+            acts_outline['act3'],
+            overall_outline,
+            act2,
+            prompt,
+            acts_outline.get('act3_beats'),
+            touching_storyline=touching_storyline['act3_touching'],
+            emotional_character=emotional_character
+        )
+    final_script = clean_story_postprocess(act1 + "\n\n" + act2 + "\n\n" + act3)
     
     print(f"最终脚本总字数：{len(final_script)}字")
     return final_script
