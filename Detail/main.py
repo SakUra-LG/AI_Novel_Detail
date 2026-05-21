@@ -2,6 +2,7 @@ import re
 import time
 import os
 import sys
+import json
 
 try:
     import dashscope as dashscope
@@ -34,13 +35,16 @@ except ModuleNotFoundError as exc:
 from humor_levels.humor_level_generator import generate_humor_level_versions
 
 
-MYTH_TARGET_TOTAL_MIN = 6000
-MYTH_TARGET_TOTAL_MAX = 8000
+MYTH_TARGET_TOTAL_MIN = 6500
+MYTH_TARGET_TOTAL_SOFT_MAX = 8500
+MYTH_TARGET_TOTAL_MAX = 9000
 MYTH_ACT_TARGETS = {
-    "act1": (1450, 1850),
-    "act2": (2300, 2900),
-    "act3": (1450, 1850),
+    "act1": (1400, 1700),
+    "act2": (3600, 4200),
+    "act3": (1400, 1700),
 }
+MYTH_CORE_CONSTRAINTS_FILENAME = 'myth_core_constraints_revised.json'
+MYTH_CORE_CONSTRAINTS_FALLBACK_FILENAME = 'myth_core_constraints.json'
 
 BAD_META_PHRASES = [
     "[因原文长度限制未能全部提供]",
@@ -58,6 +62,50 @@ BAD_META_PHRASES = [
     "感情线渐进",
     "推动主题",
     "插入对白互动",
+    "隐藏章节",
+    "此处暂留",
+    "暂留下",
+    "实际书写时不显示",
+    "不显示这段备注",
+    "TODO",
+    "待补",
+    "待完善",
+    "待续写",
+    "这段大约",
+    "多少字左右",
+    "接下来便是",
+    "下一节的内容",
+    "接下来是下一节",
+    "遥远角落",
+    "节拍卡",
+    "節拍卡",
+    "目标达成",
+    "目標達成",
+    "此处隐含",
+    "此处隱含",
+    "隐含感情",
+    "隱含感情",
+    "勾勒",
+    "伏笔",
+    "伏筆",
+    "（完毕）",
+    "(完毕)",
+    "完毕",
+]
+
+HARD_META_RESIDUE_TERMS = [
+    "节拍卡",
+    "節拍卡",
+    "目标达成",
+    "目標達成",
+    "此处暂留",
+    "此處暫留",
+    "实际书写时不显示",
+    "實際書寫時不顯示",
+    "下一节",
+    "下一節",
+    "备注：",
+    "備註：",
 ]
 
 BAD_PLAN_TERMS = [
@@ -81,6 +129,574 @@ BAD_PLAN_TERMS = [
     "系统",
 ]
 
+PLAN_DRIFT_PATTERNS = [
+    r'预知未来',
+    r'预言[^，。；\n]{0,12}(鸟|猫|动物)',
+    r'(鸟|猫|动物)[^，。；\n]{0,10}预言',
+    r'演播厅|直播间|主持台|节目组',
+    r'信心值|数值条|评分条|任务值|能量槽',
+    r'外部援助|外援介入|请来帮手|临时帮手|隐藏支援',
+    r'系统提示|程序介入|修复工程|任务面板',
+]
+
+BODY_DRIFT_PATTERNS = [
+    r'演播厅|直播间|主持台|节目组',
+    r'信心值|数值条|评分条|任务值|能量槽',
+    r'系统提示|程序介入|修复工程|任务面板',
+    r'预知未来',
+    r'预言[^，。；\n]{0,12}(鸟|猫|动物)',
+    r'(鸟|猫|动物)[^，。；\n]{0,10}预言',
+    r'不明人士帮助信号|神秘人暗中相助|幕后之人',
+    r'外部援助|外援介入|请来帮手|临时帮手|隐藏支援',
+    r'党风廉政|反腐败|社会主义|中国特色社会主义|中国梦|民族复兴|中国人民|人民群众',
+    r'全面建成小康社会|国家治理体系|依法治国|法治政府|一带一路|人类命运共同体',
+    r'政治生态|国际地位|大国关系|联合国宪章|脱贫攻坚|蓝天碧水净土保卫战',
+]
+
+MYTH_CORE_CONSTRAINTS_CACHE = None
+
+TRADITIONAL_TO_SIMPLIFIED = str.maketrans({
+    "負": "负", "責": "责", "連": "连", "劍": "剑", "飛": "飞", "昇": "升",
+    "賓": "宾", "臉": "脸", "紅": "红", "脖": "脖", "漲": "涨", "氣": "气",
+    "惱": "恼", "閉": "闭", "這": "这", "關": "关", "鍵": "键", "時": "时",
+    "風": "风", "聲": "声", "漸": "渐", "強": "强", "雲": "云", "層": "层",
+    "壓": "压", "漢": "汉", "鐘": "钟", "離": "离", "狀": "状", "別": "别",
+    "鬧": "闹", "騰": "腾", "還": "还", "麼": "么", "過": "过", "張": "张",
+    "邊": "边", "擦": "擦", "額": "额", "懷": "怀", "裡": "里", "摸": "摸",
+    "東": "东", "啥": "啥", "説": "说", "術": "术", "業": "业", "專": "专",
+    "攻": "攻", "嘆": "叹", "裡": "里", "該": "该", "檢": "检", "裝": "装",
+    "遠": "远", "處": "处", "傳": "传", "轟": "轰", "鳴": "鸣", "龍": "龙",
+    "宮": "宫", "經": "经", "察": "察", "覺": "觉", "異": "异", "動": "动",
+    "準": "准", "備": "备", "動": "动", "態": "态", "來": "来", "們": "们",
+    "調": "调", "整": "整", "塵": "尘", "國": "国", "舅": "舅", "喃": "喃",
+    "語": "语", "師": "师", "傅": "傅", "實": "实", "話": "话", "擔": "担",
+    "會": "会", "變": "变", "魚": "鱼", "蝦": "虾", "類": "类", "動": "动",
+    "物": "物", "麼": "么", "沒": "没", "帶": "带", "什": "什", "麼": "么",
+    "與": "与", "萬": "万", "絲": "丝", "嚴": "严", "個": "个", "豐": "丰",
+    "臨": "临", "麗": "丽", "舉": "举", "樂": "乐", "鄉": "乡", "書": "书",
+    "買": "买", "亂": "乱", "爭": "争", "於": "于", "亞": "亚", "產": "产",
+    "畢": "毕", "寧": "宁", "眾": "众", "優": "优", "傢": "家", "價": "价",
+    "億": "亿", "債": "债", "傷": "伤", "傾": "倾", "後": "后", "門": "门",
+    "體": "体", "發": "发", "戰": "战", "愛": "爱", "頭": "头", "靜": "静",
+    "場": "场", "顏": "颜", "顯": "显", "點": "点", "畫": "画", "聲": "声",
+    "處": "处", "變": "变", "聽": "听", "聞": "闻", "問": "问", "應": "应",
+    "對": "对", "開": "开", "閃": "闪", "現": "现", "壞": "坏", "萬": "万",
+    "塊": "块", "葉": "叶", "樹": "树", "橋": "桥", "線": "线", "輕": "轻",
+    "點": "点", "雙": "双", "寫": "写", "讀": "读", "韻": "韵", "觀": "观",
+})
+TRADITIONAL_TO_SIMPLIFIED.update(str.maketrans({
+    "難": "难", "嗎": "吗", "當": "当", "從": "从", "讓": "让", "總": "总",
+    "覺": "觉", "見": "见", "裏": "里", "爺": "爷", "爾": "尔", "為": "为",
+    "爲": "为", "擋": "挡", "護": "护", "藥": "药", "島": "岛", "臺": "台",
+    "灣": "湾", "衝": "冲", "沖": "冲", "殺": "杀", "給": "给", "網": "网",
+    "卻": "却", "剛": "刚", "幾": "几", "無": "无", "應": "应", "種": "种",
+    "尋": "寻", "將": "将", "隻": "只", "趕": "赶", "頂": "顶", "腳": "脚",
+    "歸": "归", "點": "点", "淚": "泪", "復": "复", "蘇": "苏", "餘": "余",
+    "雜": "杂", "塵": "尘", "彎": "弯", "斷": "断", "穩": "稳", "擺": "摆",
+    "驚": "惊", "嘯": "啸", "濤": "涛", "滾": "滚", "濕": "湿", "滿": "满",
+}))
+
+META_RESIDUE_PATTERNS = [
+    r'[（(][^）)]{0,80}(这段大约|多少字左右|接下来便是|下一节|实际书写|不显示|隐藏章节|待补|节拍卡|目标达成|隐含|勾勒|伏笔|备注|插入)[^）)]{0,120}[）)]',
+    r'[（(]\s*完毕\s*[）)]',
+    r'[（(]此时此刻[^）)]{0,120}[）)]',
+    r'这段大约[^。！？\n]{0,40}(字|字左右)',
+    r'(接下来便是|接下来是)[^。！？\n]{0,40}(下一节|下个小节|下一段)',
+    r'遥远角落[^。！？\n]{0,80}(默默注视|注视他们|背影)',
+    r'与此同时一位看似[^。！？\n]{0,120}角色[^。！？\n]{0,120}叫做[^。！？\n]{0,80}',
+]
+
+
+def has_hard_meta_residue(text: str) -> bool:
+    """
+    硬检测正文中的生成过程残留。命中时应判为不合格并触发重写，
+    不依赖后处理删除来掩盖问题。
+    """
+    if not text:
+        return False
+    normalized = normalize_language_pollution(text)
+    return any(term in normalized for term in HARD_META_RESIDUE_TERMS)
+
+
+def _knowledge_base_path(filename: str) -> str:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    primary = os.path.join(current_dir, 'knowledgeBase', filename)
+    if os.path.exists(primary):
+        return primary
+    return os.path.join('knowledgeBase', filename)
+
+
+def load_myth_core_constraints() -> dict:
+    """
+    加载神话故事核心主旨约束。
+    这份文件不是相似样本，而是生成前必须优先遵守的故事骨架。
+    """
+    global MYTH_CORE_CONSTRAINTS_CACHE
+    if MYTH_CORE_CONSTRAINTS_CACHE is not None:
+        return MYTH_CORE_CONSTRAINTS_CACHE
+
+    path = _knowledge_base_path(MYTH_CORE_CONSTRAINTS_FILENAME)
+    if not os.path.exists(path):
+        print(f"警告：未找到 {MYTH_CORE_CONSTRAINTS_FILENAME}，将回退使用 {MYTH_CORE_CONSTRAINTS_FALLBACK_FILENAME}。")
+        path = _knowledge_base_path(MYTH_CORE_CONSTRAINTS_FALLBACK_FILENAME)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        global_constraints = data.get("global_constraints", {})
+        stories = []
+        for story in data.get("stories", []):
+            story_copy = dict(story)
+            story_copy["_global_constraints"] = global_constraints
+            stories.append(story_copy)
+        MYTH_CORE_CONSTRAINTS_CACHE = {
+            "stories": stories,
+            "by_title": {story.get("title", ""): story for story in stories if story.get("title")},
+            "source_file": os.path.basename(path),
+            "global_constraints": global_constraints,
+        }
+        return MYTH_CORE_CONSTRAINTS_CACHE
+    except FileNotFoundError:
+        print(f"警告：未找到 {MYTH_CORE_CONSTRAINTS_FILENAME} 或 {MYTH_CORE_CONSTRAINTS_FALLBACK_FILENAME}，神话核心主旨约束不会生效。")
+    except Exception as e:
+        print(f"加载神话核心主旨约束时出错: {e}")
+
+    MYTH_CORE_CONSTRAINTS_CACHE = {"stories": [], "by_title": {}}
+    return MYTH_CORE_CONSTRAINTS_CACHE
+
+
+def find_myth_core(prompt: str) -> dict:
+    """
+    根据用户提示词匹配当前要改写的神话。
+    优先精确匹配标题和别名，避免 RAG 相似样本把故事串库。
+    """
+    if not prompt:
+        return {}
+    data = load_myth_core_constraints()
+    for story in data.get("stories", []):
+        names = [story.get("title", "")] + story.get("aliases", [])
+        if any(name and name in prompt for name in names):
+            return story
+    return {}
+
+
+def format_myth_core_block(myth_core: dict) -> str:
+    if not myth_core:
+        return ""
+
+    def _lines(label, values):
+        if not values:
+            return ""
+        return label + "\n" + "\n".join(f"- {item}" for item in values)
+
+    required_actions = myth_core.get("required_character_actions", {})
+    required_actions_block = ""
+    if required_actions:
+        required_actions_block = "角色必做动作：\n" + "\n".join(
+            f"- {name}：{action}" for name, action in required_actions.items()
+        )
+
+    global_constraints = myth_core.get("_global_constraints", {})
+    guards = global_constraints.get("quality_guards", {}) if isinstance(global_constraints, dict) else {}
+    guard_lines = []
+    for guard_name in (
+        "no_meta_text",
+        "language_cleaning",
+        "helper_role_rule",
+        "humor_rule",
+        "emotion_rule",
+        "cross_story_contamination_rule",
+        "completeness_check_rule",
+    ):
+        values = guards.get(guard_name, [])
+        if values:
+            guard_lines.extend(f"- {item}" for item in values)
+    global_guard_block = "【全局质量守卫】\n" + "\n".join(guard_lines) if guard_lines else ""
+    canonical_terms = myth_core.get("canonical_terms", {})
+    canonical_block = ""
+    if isinstance(canonical_terms, dict) and canonical_terms:
+        canonical_block = "固定名称/身份/道具称呼（全文必须一致）：\n" + "\n".join(
+            f"- {name}：{value}" for name, value in canonical_terms.items()
+        )
+    forbidden_aliases = myth_core.get("forbidden_aliases", {})
+    forbidden_alias_block = ""
+    if isinstance(forbidden_aliases, dict) and forbidden_aliases:
+        forbidden_alias_block = "禁止混用的错名/异名：\n" + "\n".join(
+            f"- {name}：{', '.join(values)}" for name, values in forbidden_aliases.items() if values
+        )
+    object_rules = myth_core.get("object_consistency", [])
+    if isinstance(object_rules, dict):
+        object_rules = [object_rules]
+    object_rule_lines = []
+    for rule in object_rules or []:
+        if not isinstance(rule, dict):
+            continue
+        allowed = "、".join(rule.get("allowed_forms", []))
+        forbidden = "、".join(rule.get("forbidden_forms", []))
+        line = f"- {rule.get('name', '核心道具')}：允许形态为 {allowed or '已设定形态'}"
+        if forbidden:
+            line += f"；禁止写成 {forbidden}"
+        object_rule_lines.append(line)
+    object_rule_block = "核心道具一致性：\n" + "\n".join(object_rule_lines) if object_rule_lines else ""
+
+    parts = [
+        "【本篇神话主题主旨硬约束（优先级高于RAG样本和幽默扩写）】",
+        f"故事名：{myth_core.get('title', '')}",
+        f"核心主旨：{myth_core.get('core_summary', '')}",
+        _lines("必须保留的核心事件链：", myth_core.get("event_chain", [])),
+        _lines("成稿必须写出的识别点：", myth_core.get("must_include", [])),
+        _lines("成稿最终验收必须明确写出的关键短语/意象：", myth_core.get("final_required_phrases", [])),
+        _lines("禁止改写成的错误方向：", myth_core.get("must_not_change", [])),
+        _lines("本故事专属禁区词/禁区情节：", myth_core.get("forbidden_elements", [])),
+        _lines("本故事专属禁用表达模式：", myth_core.get("forbidden_patterns", [])),
+        canonical_block,
+        forbidden_alias_block,
+        object_rule_block,
+        required_actions_block,
+        f"扩写边界：{myth_core.get('expansion_guidance', '')}",
+        global_guard_block,
+        "如果参考样本、旧稿、大纲或幽默梗与以上约束冲突，必须舍弃参考样本和旧稿，以本篇神话核心主旨为准。",
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def build_core_fallback_plan(prompt: str, myth_core: dict) -> dict:
+    """
+    当模型规划阶段连续产出空节拍或跑偏节拍时，按核心事件链生成可执行兜底三幕。
+    兜底稿不追求花哨，但能保证后续正文生成贴住主线。
+    """
+    title = myth_core.get("title") or prompt or "神话故事"
+    chain = [item for item in myth_core.get("event_chain", []) if item]
+    if not chain:
+        chain = myth_core.get("must_include", [])[:6] or [title]
+
+    shennong_humor_channels = [
+        "试药反差：神农严肃判断味道或药性，身体反应立刻拆他的台",
+        "村民误解：旁观者把试药、记药误会成品菜、蘸料、偏方买卖或奇怪仪式",
+        "辅助翻车：阿喜/随从想帮忙，叼来或递来的东西反而暴露自己的小心思",
+        "药性命名：神农给草药取临时记名，名字像严肃记录但听起来很想笑",
+        "严肃记录与狼狈状态反差：他边吐边写，记录语气越端正，画面越狼狈",
+        "互怼拆台：辅助角色只负责补一刀，不得连续承包所有笑点",
+    ]
+    kunpeng_humor_channels = [
+        "小鱼误解：小鱼按北冥日常误读鲲的远志，笑点短促，不打断宏大画面",
+        "古风旁观反差：旁观者把大鹏的影子误当成山、云或天漏了一块",
+        "阿浪嘴硬：阿浪前期短促拆台，中期震惊，后期沉默认可，不连续抢戏",
+        "尺度反差：用普通生活尺度衡量鲲鹏的巨大，随即被海天景象推翻",
+        "命名反差：旁观者试图用朴素称呼记录大鹏，称呼越小，画面越大",
+        "风势误解：众人以为六月大风是阻碍，鲲鹏悟到那正是托举之力",
+    ]
+    generic_humor_channels = [
+        "动作反差：宏大目标配一个具体狼狈小动作",
+        "旁观误解：路人按生活经验误读主角的神话行动",
+        "道具翻车：关键道具被误用、卡住或出现尴尬后果",
+        "命名/记录梗：角色用过分认真或过分朴素的说法记录当下",
+        "嘴硬自嘲：主角用一句轻描淡写掩饰压力",
+        "互怼拆台：辅助角色短促接梗，不连续抢戏",
+    ]
+    if "神农" in title or "尝百草" in title:
+        humor_channels = shennong_humor_channels
+    elif "北冥鲲鹏" in title or "鲲鹏" in title:
+        humor_channels = kunpeng_humor_channels
+    else:
+        humor_channels = generic_humor_channels
+
+    def _outline(events, role):
+        joined = "；".join(events)
+        return f"{title}{role}必须围绕核心事件推进：{joined}。所有扩展只补足人物动机、道具状态、压力来源、动作过程、情绪变化和贴着主线的笑点。幽默不能只靠辅助角色互怼，必须让试错过程、旁观误解、道具状态、记录/命名反差共同制造笑点；辅助角色只能见证、短促拆台或轻微翻车，不能替代主角完成核心选择。"
+
+    if title == "北冥鲲鹏":
+        def _beat(goal, visual, emotion, info, ban, humor, foreshadow="阿浪的嘲笑逐渐变轻，老龟的沉默成为见证", relation="阿浪从调侃转为惊愕，主角始终自己完成选择"):
+            return {
+                "场景目标": goal,
+                "画面要素": visual,
+                "情绪推动": emotion,
+                "信息增量": info,
+                "禁止项": ban,
+                "情感伏笔": foreshadow,
+                "关系推进": relation,
+                "幽默机制": humor,
+            }
+
+        act1_beats = [
+            _beat(
+                "建立北冥深处巨鲲存在与狭小感",
+                "北冥深海压暗如夜；鲲翻身只让海水起伏，不开始化鹏",
+                "烦闷→不甘",
+                "只交代鲲为何觉得北冥容不下自己的心，不写变身",
+                "不得写北海；不得让阿浪解释设定；不得出现岸边码头货船",
+                "小鱼误解：小鱼把鲲的远志当成睡醒翻身",
+            ),
+            _beat(
+                "确认鲲想离开北冥的动机",
+                "鲲仰望海面微光；老龟只说一句古老传闻",
+                "不甘→清醒",
+                "新增鲲知道南冥天池存在，但尚未起飞",
+                "不得提前展翼；不得写南冥已经抵达",
+                "尺度反差：小鱼用浅滩大小衡量鲲的梦想",
+            ),
+            _beat(
+                "加压北冥众生的嘲笑与误解",
+                "阿浪绕着鲲的鳍游一圈；小鱼把鲲的影子误认成山壁",
+                "清醒→决断",
+                "新增外界声音越小越碎，反衬鲲的心越大",
+                "不得让阿浪连续长篇吐槽；不得新增风灵子等外援",
+                "阿浪嘴硬：短促拆台，但不抢主线",
+            ),
+            _beat(
+                "鲲作出化鹏选择",
+                "鲲沉入更深处再缓缓上升；鳞光转为羽光的第一丝征兆",
+                "决断→忍痛",
+                "只写化鹏的不可逆选择开始，不写完整展翼",
+                "不得重复开篇苏醒；不得写身体恐怖、腐烂、异物",
+                "嘴硬自嘲：鲲用一句轻话压住痛楚",
+            ),
+            _beat(
+                "执行鳞化羽的第一阶段",
+                "鳞片边缘亮起羽纹；海水被新生气息推开",
+                "忍痛→稳住",
+                "新增变化方向是鳞化羽，不是怪物变异",
+                "不得写掉渣烂肉；不得说这就成了",
+                "古风旁观反差：旁观者把羽光误当月色落海",
+            ),
+            _beat(
+                "第一幕余波：鲲尚未成鹏，但已不能退回旧身",
+                "北冥海面第一次被背影顶开；阿浪声音变小",
+                "稳住→期待",
+                "明确下一阶段要等待真正托举它的六月大风",
+                "不得完整起飞；不得写南冥结尾",
+                "风势误解：众人把风当前兆，鲲知道它可能是路",
+            ),
+        ]
+        act2_beats = [
+            _beat("建立化鹏第二阶段：背若泰山", "鲲背从海中隆起如山；海水沿羽纹分流", "期待→紧张", "推进到背部成鹏形，不重复第一幕鳞化羽", "不得再写鲲刚刚睁眼；不得重启北冥开头", "尺度反差：渔人误认海上多了一座山"),
+            _beat("确认鹏翼初成但尚不能飞", "两翼只展开一半；风压把浪头压低", "紧张→克制", "新增翅膀太大，必须学会承风而非硬挣", "不得说已经飞往南冥；不得让旁人帮它飞", "命名反差：旁观者给巨翼取小名，立刻显得可笑"),
+            _beat("加压：巨翼触风失衡", "风撞上羽端；鲲被压回浪间但没有散形", "克制→咬牙", "新增失败原因是逆风硬飞，不是力量不足", "不得写成坠落事故闹剧；不得身体恐怖", "阿浪嘴硬：想笑却被浪声噎住"),
+            _beat("决断：鲲明白要等六月大风", "老龟看天色不解释；鲲听见海底长风回响", "咬牙→明悟", "明确六月大风不是普通风，是天地托举之力", "不得写成东风、飓风、天气事故", "风势误解：众人以为是阻碍，鲲听出是路"),
+            _beat("执行：鹏翼若垂天之云", "双翼完整舒展遮住海天；云影垂落北冥", "明悟→庄重", "首次明确众生看见的是鹏翼若垂天之云", "不得多次重复同一句展翼；不得再称只是巨鱼", "古风旁观反差：有人以为天低了一截"),
+            _beat("余波：鲲的新身份被确认", "羽影覆盖海面；阿浪仰头半晌才低声叫出大鹏", "庄重→震动", "明确鲲已化为鹏，但仍未远徙", "不得回头再写化鹏过程；不得重新长鳞脱鳞", "阿浪嘴硬转沉默：只剩一句很轻的认可"),
+            _beat("六月大风自北冥深处起", "海底长风翻起；巨翼不再抵抗而是张开承接", "震动→顺势", "新增风开始托举大鹏离水", "不得把大风写成灾难主角；不得新增外援角色", "风势误解：小鱼以为要被吹丢，结果看见大鹏上升"),
+            _beat("乘风离开北冥边界", "大鹏背负青天升起；下方嘲笑声变小如泡沫", "顺势→开阔", "推进到离开北冥，不直接抵达南冥", "不得停在原地围观；不得写打败谁", "尺度反差：旧日笑声在高空里小得可怜"),
+            _beat("第二幕收束：南冥天池成为清晰方向", "天际出现南方水光；大鹏调整翼势向南", "开阔→笃定", "明确下一幕目标是飞往南冥天池", "不得只写模糊远方；不得在此结束全篇", "嘴硬自嘲：阿浪不敢再笑，只说别飞错方向"),
+        ]
+        act3_beats = [
+            _beat("建立远徙：大鹏已在高空", "北冥海面退成一片暗光；南方天际浮现水色", "笃定→辽阔", "不再写化鹏，只写徙南冥的飞行开始", "不得回到海底重写变身；不得再写北海", "古风旁观反差：众人把远影误认成云在迁徙"),
+            _beat("确认六月大风持续托举", "大风托住翼根；大鹏不再挣扎而是借势上升", "辽阔→自在", "强化风是天地递来的第一程路", "不得写成总结作文；不得说动力源泉", "风势误解：阿浪终于不把风当灾"),
+            _beat("加压：北冥旧声音远去", "下方嘲笑声小成浪沫；大鹏没有回头争辩", "自在→释然", "主题转向离开狭小尺度，而非证明给谁看", "不得让阿浪高频吐槽；不得开启新冲突", "阿浪沉默认可：只用一个动作回应"),
+            _beat("决断：大鹏向南冥天池定向远举", "南冥天池水光如镜；大鹏收束翼尖转向南方", "释然→坚定", "明确飞行终点是南冥天池", "不得停在飞起来；不得只写南冥所在", "命名反差：渔民再也找不到合适的小称呼"),
+            _beat("执行：越过北冥与南冥之间的长空", "云层从翼下退去；青天压在背上却不再沉重", "坚定→逍遥", "写出背负青天、逍遥远举的动作过程", "不得重复翼若垂天之云；不得写新设定", "尺度反差：山河在翼下缩成一线"),
+            _beat("余波收束：徙于南冥天池", "大鹏掠向南冥天池；北冥众生只见云影远去", "逍遥→余韵", "必须明确它乘六月大风向南冥天池飞去，完成核心闭环", "不得出现（完毕）；不得停在众人仰望", "嘴硬型余味：阿浪低声认可，不再抢戏"),
+        ]
+        return {
+            "act1": _outline(["北冥巨鲲存在", "鲲决定化而为鸟"], "第一幕"),
+            "act2": _outline(["鲲化为大鹏", "鹏翼若垂天之云", "乘六月大风而起"], "第二幕"),
+            "act3": _outline(["背负青天远举", "飞往南冥天池", "呈现逍遥精神"], "第三幕"),
+            "act1_beats": act1_beats,
+            "act2_beats": act2_beats,
+            "act3_beats": act3_beats,
+        }
+
+    if title == "伏羲画卦":
+        def _beat(goal, visual, emotion, info, ban, humor, foreshadow="族人从不解到愿意倾听，伏羲的孤独逐渐被理解", relation="辅助角色只能误解、见证或递上材料，不能替伏羲领悟八卦"):
+            return {
+                "场景目标": goal,
+                "画面要素": visual,
+                "情绪推动": emotion,
+                "信息增量": info,
+                "禁止项": ban,
+                "情感伏笔": foreshadow,
+                "关系推进": relation,
+                "幽默机制": humor,
+            }
+
+        act1_beats = [
+            _beat("建立洪荒部落对自然无序的困惑", "风雨忽至、猎路迷失、族人按直觉争吵；伏羲在旁记录变化", "焦灼→沉思", "交代伏羲为什么必须寻找天地规律", "不得写成算命摊；不得写现代玄学课", "旁观误解：族人以为伏羲在记谁偷吃了粮"),
+            _beat("确认伏羲主动观察天地万物", "伏羲仰观天象、俯察水纹、追看鸟兽足迹，把线条刻在泥板上", "沉思→专注", "明确伏羲是观察者和记录者，不是被人直接送答案", "不得让外人送八卦成品", "动作反差：伏羲严肃观天，脚下却踩进泥坑"),
+            _beat("加压族人看不懂符号而嘲笑", "孩子把短横长横当柴火账，老人催他去修篱笆", "专注→受挫", "写出八卦雏形尚未成体系，众人不理解", "不得把八卦写成 gossip 闲聊", "命名/记录梗：族人给符号取很朴素的小名"),
+            _beat("决断去河边寻找河洛之象", "伏羲带着龟甲、泥板和绳结沿河而行；水声与星光互相映照", "受挫→坚定", "伏羲不是逃避嘲笑，而是继续验证观察", "不得新增女娲客串主导；不得改成寻宝冒险", "嘴硬自嘲：伏羲说自己不是发呆，是在等天地开口"),
+            _beat("执行看见龙马负图或河图显现", "龙马自河雾中现身，背负纹理；水面同心波与星点相合", "坚定→震撼", "核心神迹出现，但伏羲只得到启发，不得到成品八卦", "不得写成龙马直接教会八卦", "旁观误解：族人先关心这马能不能拉车"),
+            _beat("第一幕余波：伏羲开始把河图与万物观察相互印证", "伏羲伏在岸边拓纹，泥水满袖；族人的笑声渐低", "震撼→求证", "转入下一幕的推演：河图只是引子，阴阳变化需要伏羲亲自悟出", "不得第一幕就完整画出八卦", "道具翻车：龟甲滑进水里又被捞回"),
+        ]
+        act2_beats = [
+            _beat("建立推演难点：河图纹理无法直接解释万物", "泥板摆满短长线、圆点和绳结；伏羲反复对照昼夜寒暑", "求证→困惑", "说明八卦不是抄图，而是从现象中抽象规律", "不得写成成品说明书", "动作反差：伏羲越排越庄重，泥板越像一锅乱粥"),
+            _beat("确认阴阳雏形来自相反相成", "日影移动、水流分合、鸟群一散一聚；伏羲划出一实一虚两种线", "困惑→微明", "新增阴阳不是口号，而是由相反现象归纳出来", "不得写成现代物理课", "旁观误解：族人以为他在给柴火分粗细"),
+            _beat("加压第一次解释失败", "伏羲向族人展示两种线，众人听得满脸茫然，有人拿它当捕兽记号", "微明→受阻", "写出知识从个人领悟到公共理解之间有阻力", "不得变成算命招揽客人", "互怼拆台：辅助角色只短促吐槽听不懂"),
+            _beat("决断继续观察四时与方位", "伏羲冒雨看雷，迎风辨向，在晨昏之间校对线条", "受阻→坚持", "扩展到天、地、雷、风、水、火、山、泽等自然类别", "不得串入补天、造人、射日等其他神话主线", "嘴硬自嘲：他说被雨浇透也算被天地亲自批注"),
+            _beat("执行把阴阳线组合成多个卦象", "龟甲上实线断线层层相叠，伏羲用骨针刻出不同组合", "坚持→成形", "明确伏羲亲手组合符号，八卦逐渐成形", "不得让老匠人或外援替他画卦", "道具翻车：骨针折了，他把折痕也拿来比对"),
+            _beat("加压材料损坏与众人误会", "雨水冲散泥板，孩童误把卦象踩成脚印，伏羲重新整理", "成形→濒临崩溃", "失败不是重启剧情，而是逼伏羲把规律记得更准", "不得重复龙马第一次出现；不得写正文污染提示", "旁观误解：孩子以为自己一脚踩出了新学问"),
+            _beat("确认八种卦象的秩序", "乾坤震巽坎离艮兑依次落位，伏羲把它们同天地万象对应", "濒临崩溃→明朗", "第一次完整确认八卦名称和基本对应关系", "不得写成村口闲聊八卦", "命名/记录梗：族人嫌名字难记，伏羲用自然画面解释"),
+            _beat("执行用八卦解释一次现实难题", "风向变、云压低、河水涨，伏羲据卦提醒族人避开低地", "明朗→被看见", "让八卦的文明意义先通过具体事件显出用处", "不得变成彩票预测、姻缘占卜", "动作反差：最不信的人抱着锅跑得最快"),
+            _beat("第二幕余波：族人开始愿意听伏羲讲解", "雨后部落无恙，众人围着龟甲安静下来", "被看见→期待", "转入第三幕公开画卦和建立秩序", "不得在第二幕结束全篇", "互怼拆台：辅助角色嘴硬说自己只是怕锅被淹"),
+        ]
+        act3_beats = [
+            _beat("建立公开画卦的场面", "祭土铺平，龟甲置中，族人围成半圈；伏羲洗净手上的泥", "期待→庄重", "从个人推演转为公开传授", "不得写成算命摊开张", "动作反差：孩子小声问这些线能不能先画直一点"),
+            _beat("确认伏羲亲手画出八卦", "伏羲一笔一划画下乾坤震巽坎离艮兑，短线长线各归其位", "庄重→完成", "核心行动必须由伏羲亲自完成", "不得由龙马、老匠人、外人替他完成", "命名/记录梗：族人努力跟读卦名读得磕绊"),
+            _beat("加压最后的质疑：这些符号到底有何用", "有人问符号能否挡雨、能否生粮；伏羲把卦象指向天时地利", "完成→解释", "把抽象符号转化为人们能理解的自然秩序", "不得泛泛说大家明白了道理", "旁观误解：族人先把卦象当农具摆放图"),
+            _beat("执行人们借八卦理解自然", "老人据风雷知道何时避雨，猎人据山泽辨路，农人据寒暑安排播种", "解释→信服", "必须写出八卦如何帮助人理解自然和人事", "不得只写众人震惊；不得停在符号好看", "动作反差：先前笑得最大声的人记得最认真"),
+            _beat("决断把八卦传给部落后人", "伏羲把刻好的龟甲交给族中少年，又在泥板上反复示范", "信服→传承", "文明意义落到共享知识，而不是个人炫耀", "不得写成现代课程培训", "嘴硬型温柔：辅助角色说自己不是服了，只是不想再被雨淋"),
+            _beat("余波收束：从混沌经验到可解释秩序", "部落夜里有火光与记录声，风雨仍来，但人们不再只靠恐惧判断", "传承→余韵", "结尾落到伏羲画卦开启人们理解自然、人事与秩序", "不得出现完毕、关注点赞等正文污染", "克制轻笑：孩子把卦线画歪，伏羲笑着重新扶正"),
+        ]
+        return {
+            "act1": _outline(["伏羲观察天地万物", "见龙马负图或河洛之象"], "第一幕"),
+            "act2": _outline(["从昼夜寒暑、水火动静中悟出阴阳变化", "亲手组合卦象"], "第二幕"),
+            "act3": _outline(["伏羲画出八卦", "人们借八卦理解自然、人事与秩序"], "第三幕"),
+            "act1_beats": act1_beats,
+            "act2_beats": act2_beats,
+            "act3_beats": act3_beats,
+        }
+
+    act1_events = chain[: max(2, min(3, len(chain) // 3 or 2))]
+    act3_events = chain[-2:] if len(chain) >= 4 else chain[-1:]
+    middle_start = len(act1_events)
+    middle_end = max(middle_start, len(chain) - len(act3_events))
+    act2_events = chain[middle_start:middle_end] or chain[1:-1] or chain
+
+    def _make_beats(events, target_count, phase):
+        if not events:
+            events = [title]
+        angles = [
+            ("建立", "交代来龙去脉与当下压力"),
+            ("确认", "明确关键道具/行动目标的状态与代价"),
+            ("加压", "让外部阻力或旁观反应逼近主线选择"),
+            ("决断", "让核心人物做出本阶段不可跳过的选择"),
+            ("执行", "分解新的动作步骤，不复述上一拍已完成动作"),
+            ("余波", "展示后果并自然转入下一阶段"),
+        ]
+        beats = []
+        for i in range(target_count):
+            event = events[min(i * len(events) // target_count, len(events) - 1)]
+            goal_prefix, angle = angles[min(i, len(angles) - 1)]
+            humor_channel = humor_channels[i % len(humor_channels)]
+            beats.append({
+                "场景目标": f"{goal_prefix}{phase}核心节点：{event}；本拍只写{angle}",
+                "画面要素": f"{event}的一个新动作、一个新压力来源、核心人物的具体身体/表情反应；预留一个非对白反差画面",
+                "情绪推动": "不安→清醒" if phase == "第一幕" else ("紧张→决断" if phase == "第二幕" else "痛惜→余韵"),
+                "信息增量": f"只新增{event}在本阶段的一个因果信息，不重复上一拍已经完成的动作",
+                "禁止项": "不得新增无关支线、不得让辅助角色抢走核心行动、不得重复描写上一拍已经完成的藏匿/出发/执行动作",
+                "情感伏笔": "保留一个与核心人物关系相关的小动作或小物件",
+                "关系推进": "核心人物关系随主线压力加深，辅助角色只作见证",
+                "幽默机制": humor_channel,
+            })
+        return beats
+
+    return {
+        "act1": _outline(act1_events, "第一幕"),
+        "act2": _outline(act2_events, "第二幕"),
+        "act3": _outline(act3_events, "第三幕"),
+        "act1_beats": _make_beats(act1_events, 6, "第一幕"),
+        "act2_beats": _make_beats(act2_events, 9, "第二幕"),
+        "act3_beats": _make_beats(act3_events, 6, "第三幕"),
+    }
+
+
+def contains_myth_core_violation(text: str, myth_core: dict) -> bool:
+    if not text or not myth_core:
+        return False
+    forbidden = myth_core.get("forbidden_elements", [])
+    if any(term and term in text for term in forbidden):
+        return True
+    forbidden_patterns = myth_core.get("forbidden_patterns", [])
+    for pattern in forbidden_patterns or []:
+        if not pattern:
+            continue
+        try:
+            if re.search(pattern, text):
+                return True
+        except re.error:
+            if pattern in text:
+                return True
+    forbidden_aliases = myth_core.get("forbidden_aliases", {})
+    if isinstance(forbidden_aliases, dict):
+        for _canonical, aliases in forbidden_aliases.items():
+            if any(alias and alias in text for alias in aliases):
+                return True
+    object_rules = myth_core.get("object_consistency", [])
+    if isinstance(object_rules, dict):
+        object_rules = [object_rules]
+    for rule in object_rules or []:
+        if not isinstance(rule, dict):
+            continue
+        for form in rule.get("forbidden_forms", []):
+            if form and form in text:
+                return True
+    return False
+
+
+def myth_core_required_sequence_met(text: str, myth_core: dict) -> bool:
+    """
+    检查关键短语是否按原神话事件链的方向出现。
+    用于拦截“先写南冥，再反复回头化鹏”这类结构重启。
+    """
+    if not text or not myth_core:
+        return True
+    sequence = myth_core.get("required_sequence", [])
+    if not sequence:
+        return True
+    cursor = -1
+    for term in sequence:
+        if not term:
+            continue
+        pos = text.find(term, cursor + 1)
+        if pos < 0:
+            return False
+        cursor = pos
+    return True
+
+
+def myth_core_required_hit_count(text: str, myth_core: dict, field: str = "must_include") -> int:
+    if not text or not myth_core:
+        return 0
+    return sum(1 for term in myth_core.get(field, []) if term and term in text)
+
+
+def myth_core_final_phrases_met(text: str, myth_core: dict) -> bool:
+    """
+    比 must_include 更严格的成稿验收项。
+    must_include 适合做标题识别与规划提示；final_required_phrases 用来锁住
+    原典关键意象、终点或身份确认，避免单字词造成假阳性。
+    """
+    if not text or not myth_core:
+        return True
+    required = myth_core.get("final_required_phrases", [])
+    if not required:
+        return True
+    min_hits = myth_core.get("min_final_required_phrase_hits")
+    if min_hits is None:
+        min_hits = len(required)
+    return myth_core_required_hit_count(text, myth_core, "final_required_phrases") >= min_hits
+
+
+def myth_core_requirement_met(text: str, myth_core: dict, final: bool = False) -> bool:
+    if not myth_core:
+        return True
+    field = "must_include"
+    required = myth_core.get(field, [])
+    if not required:
+        return True
+
+    if final:
+        min_hits = myth_core.get("min_final_required_hits")
+        if min_hits is None:
+            min_hits = max(2, min(len(required), (len(required) + 1) // 2))
+    else:
+        min_hits = myth_core.get("min_plan_required_hits")
+        if min_hits is None:
+            min_hits = max(1, min(3, len(required)))
+    return myth_core_required_hit_count(text, myth_core, field) >= min_hits
+
+
+def apply_myth_specific_postprocess(text: str, myth_core: dict = None) -> str:
+    if not text or not myth_core:
+        return text
+    if myth_core.get("title") == "北冥鲲鹏":
+        text = text.replace("北海深处", "北冥深处")
+        text = text.replace("北海之上", "北冥之上")
+        text = text.replace("北海下", "北冥下")
+        text = re.sub(r'北海(?!道)', '北冥', text)
+        if "向南冥天池飞去" not in text and "南冥天池" in text:
+            text = re.sub(r'[\s。！？…]*$', '', text)
+            text += "\n\n大鹏没有再回头。它乘着六月大风，越过北冥翻涌的海面，向南冥天池飞去。那些曾经笑它太大、太笨、太不安分的声音，终于小得像浪尖上的泡沫。"
+    return text
+
 def clean_markdown(text):
     """去除 Markdown 格式符号"""
     if not text:
@@ -97,11 +713,115 @@ def clean_markdown(text):
 
     # 删除明显是"注释 / 说明"的尾部内容（如"注释：""注解："之后的部分）
     text = re.sub(r'(注释：|注解：)[\s\S]*$', '', text)
+    text = remove_meta_residue(text)
+    text = normalize_language_pollution(text)
+    text = remove_meta_residue(text)
 
     # 折叠过多的空行：最多保留连续 2 个换行，避免极端空行
     text = re.sub(r'\n{3,}', '\n\n', text)
 
     return text.strip()
+
+
+def remove_meta_residue(text: str) -> str:
+    """
+    删除模型泄露到正文里的写作提示、字数说明和下一节提示。
+    这些内容不是故事文本，宁可整段删除，也不要保留在成稿里污染样本。
+    """
+    if not text:
+        return text
+
+    for pattern in META_RESIDUE_PATTERNS:
+        text = re.sub(pattern, '', text)
+
+    # 删除单独成行或短句形式的生成说明。
+    meta_line_patterns = [
+        r'^[^\n]{0,20}(这段大约|多少字左右|接下来便是|下一节|实际书写|不显示|隐藏章节|待补|备注|插入)[^\n]{0,80}$',
+        r'^[^\n]{0,20}(节拍卡|画面要素|情感伏笔|关系推进|信息增量|场景目标)[：:][^\n]{0,120}$',
+    ]
+    lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if any(re.search(pattern, stripped) for pattern in meta_line_patterns):
+            continue
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def remove_body_drift_residue(text: str) -> str:
+    """
+    删除明显串出台词/主题的段落，尤其是现代政治宣传腔、系统工程腔等。
+    这类内容宁可整段删除，也不能混入神话正文。
+    """
+    if not text:
+        return text
+    drift_patterns = BODY_DRIFT_PATTERNS + [
+        r'绿色发展|循环经济|金山银山|现代化水平|获得感幸福感安全感',
+        r'正能量|政治生态|社会稳定|国家安全|对外开放新格局',
+    ]
+    kept = []
+    for block in re.split(r'(\n\s*\n)', text):
+        if not block.strip() or re.fullmatch(r'\n\s*\n', block):
+            kept.append(block)
+            continue
+        if any(re.search(pattern, block) for pattern in drift_patterns):
+            continue
+        kept.append(block)
+    cleaned = "".join(kept)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned
+
+
+def normalize_language_pollution(text: str) -> str:
+    """
+    统一清理语言污染：
+    - 常见繁体字转简体
+    - 删除俄文/希腊文等误入字符
+    - 清理异常标点和中文之间的多余空格
+    """
+    if not text:
+        return text
+
+    text = text.translate(TRADITIONAL_TO_SIMPLIFIED)
+    text = re.sub(r'[\u0370-\u03FF\u0400-\u052F]+', '', text)
+    text = text.replace('「', '“').replace('」', '”').replace('『', '“').replace('』', '”')
+    text = text.replace(' ,', '，').replace(', ', '，').replace(' .', '。')
+    text = re.sub(r'(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])', '', text)
+    text = re.sub(r'\s+([，。！？；：、])', r'\1', text)
+    text = re.sub(r'([，。！？；：、])\s+', r'\1', text)
+    text = re.sub(r'([，。！？；：、])\1{1,}', r'\1', text)
+    text = re.sub(r'[ ]{2,}', ' ', text)
+    return text
+
+
+def contains_plan_drift(text: str, myth_core: dict = None) -> bool:
+    """
+    检测规划文本中的跑偏信号：
+    - 系统化/工程化/综艺化表达
+    - 预言型动物、神秘外援等与神话主线脱节的扩写模板
+    """
+    if not text:
+        return False
+    if contains_myth_core_violation(text, myth_core or {}):
+        return True
+    if any(term in text for term in BAD_PLAN_TERMS):
+        return True
+    return any(re.search(pattern, text) for pattern in PLAN_DRIFT_PATTERNS)
+
+
+def contains_body_drift(text: str, myth_core: dict = None) -> bool:
+    """
+    检测正文中的跑偏信号：
+    - 现代节目/数值系统/工程说明
+    - 预言动物、神秘外援等未受控的新设定
+    """
+    if not text:
+        return False
+    if contains_myth_core_violation(text, myth_core or {}):
+        return True
+    if any(term in text for term in BAD_PLAN_TERMS):
+        return True
+    return any(re.search(pattern, text) for pattern in BODY_DRIFT_PATTERNS)
 
 
 def fix_punctuation_and_paragraphs(text):
@@ -183,7 +903,75 @@ def fix_punctuation_and_paragraphs(text):
             fixed_para = ''.join(fixed_sentences)
             fixed_paragraphs.append(fixed_para)
     
-    return '\n'.join(fixed_paragraphs)
+    return split_long_paragraphs('\n'.join(fixed_paragraphs))
+
+
+def split_long_paragraphs(text: str, max_paragraph_len: int = 360, soft_paragraph_len: int = 240) -> str:
+    """
+    将过长自然段按句子边界拆开，避免多个节拍或多个动作阶段黏成一整段。
+    只在句末标点处换段，不强行切断句子。
+    """
+    if not text:
+        return text
+
+    sentence_pattern = re.compile(r'.+?[。！？!?](?:[”"])?|.+$', re.DOTALL)
+    paragraphs = re.split(r'\n{2,}', text.strip())
+    rebuilt = []
+
+    def _split_oversized_sentence(sentence: str) -> list:
+        if len(sentence) <= max_paragraph_len:
+            return [sentence]
+        clauses = re.split(r'(?<=[，；：、,;:])', sentence)
+        chunks = []
+        current = ""
+        for clause in clauses:
+            if not clause:
+                continue
+            if current and len(current) + len(clause) > max_paragraph_len:
+                chunks.append(current)
+                current = clause
+            else:
+                current += clause
+            while len(current) > max_paragraph_len:
+                chunks.append(current[:soft_paragraph_len])
+                current = current[soft_paragraph_len:]
+        if current:
+            chunks.append(current)
+        return chunks
+
+    for para in paragraphs:
+        para = re.sub(r'\s*\n\s*', '', para.strip())
+        if not para:
+            continue
+        if len(para) <= max_paragraph_len:
+            rebuilt.append(para)
+            continue
+
+        sentences = []
+        for m in sentence_pattern.finditer(para):
+            sentence = m.group(0).strip()
+            if sentence:
+                sentences.extend(_split_oversized_sentence(sentence))
+        current = ""
+        for sentence in sentences:
+            if not current:
+                current = sentence
+                continue
+
+            should_break = len(current) >= soft_paragraph_len and (
+                len(current) + len(sentence) > max_paragraph_len
+                or sentence.startswith(("这时", "忽然", "然而", "正当", "就在", "与此同时", "远处", "身后", "他", "她", "夸父", "后羿", "嫦娥"))
+            )
+            if should_break:
+                rebuilt.append(current)
+                current = sentence
+            else:
+                current += sentence
+
+        if current:
+            rebuilt.append(current)
+
+    return "\n\n".join(rebuilt).strip()
 
 def call_qianwen_api(messages, temperature=0.95, top_p=0.9, repetition_penalty=1.15, max_retries=5, max_tokens=None):
     """
@@ -300,7 +1088,7 @@ def generate_fight_scene_with_reversal(prompt):
     return chat_once(reversal_template.format(prompt=prompt))
 
 
-def get_myth_system_prompt_base(reference_content=None):
+def get_myth_system_prompt_base(reference_content=None, myth_core=None):
     """
     获取神话改写的系统提示词基础部分
     """
@@ -309,6 +1097,7 @@ def get_myth_system_prompt_base(reference_content=None):
                 只使用与本次神话改写强相关的内容样本，不引用其他世界观或门派设定；
                 参考内容：{reference_content if reference_content else "无"}
     """ if reference_content else ""
+    myth_core_part = format_myth_core_block(myth_core)
     
     return f"""
             角色：你是一名擅长改写中国神话故事的影视编剧，整体基调偏轻松、有幽默感，
@@ -370,12 +1159,13 @@ def get_myth_system_prompt_base(reference_content=None):
             - 如写到"被误解的孩子"，可以写清楚"标签""天命""舆论""规矩"等外在压力是如何压在他/她身上的；
             - 如安排情绪爆发或对峙（吵架、摊牌、大战前的对话等），要服务于转折或决策，不必每篇都出现；
             - 情感高潮之后，优先用一个"小动作"或略带吐槽的台词收束情绪，而不是长篇鸡汤式总结。
-            - 【副角数量与功能硬规则】：整篇故事中，除主角外，**至少需要3个有具体名字的功能型副角**，且必须贯穿多幕出现（不可只说一两句就消失）；每个副角都要有清晰的【功能定位】，承担推进剧情或承载信息的任务，而不是单纯背景板。
-            - 【固定拆台副角（对嘴互怼搭档，必须执行）】：必须设定**一名**有具体名字的【固定拆台副角】（如小徒弟阿狗、随从某某、损友某某），从第一幕到第三幕**贯穿出现**，其核心功能就是与主角**对嘴互怼/拆台**——在主角说正经话或嘴硬时，用一句接地气的吐槽、拆台或歪楼接话，制造笑点。该副角不能只出现一两句就消失，也不能被路人、无名群众替代；全篇至少 **1/3 以上的对白笑点**须由「主角 ↔ 该固定拆台副角」的互怼完成。每幕至少 2–3 处笑点须明确来自该副角与主角的一来一往（主角说—该副角接话拆台/吐槽）。
+            - 【副角数量与功能硬规则】：辅助角色宁少勿多。默认最多保留一名有名字的功能型辅助角色；如原神话已有反派、亲人、师徒等必要人物，不再额外硬加副角。辅助角色只能承接信息、制造轻微笑点或见证情绪，不能替代神话主角完成核心行动。
+            - 【固定拆台副角（可选）】：只有在不挤压主角、反派和核心情感关系时，才可设置一名固定拆台副角。该角色不必每节都出现，越接近重大抉择、牺牲、分离和结尾，越要主动退场，不能用连续吐槽打断主线情绪。
 
             【幽默优先原则（适用于所有神话改写）】
-            - 【优先级】本改写以「幽默强度与数量」为第一目标，可适当放宽对文学性、节奏感的苛求；宁可幽默明显、对白好笑，也不要为追求庄重而削弱笑点。读者应能明确感到「这里在搞笑/这里很好笑」。
-            - 【整体风格】故事在保留神话骨架的前提下，大量通过人物性格与对白制造幽默；仅约 20-25% 的节拍（重大抉择、牺牲瞬间、收束画面）保持庄重，其余节拍都应有机会出现明显笑点。
+            - 【优先级】幽默必须服从神话核心因果，但整体是娱乐向神话改写，可以风趣、灵动，甚至有少量贴合古代处境的搞怪反差。
+            - 【整体风格】故事在保留神话骨架的前提下，通过人物性格与处境制造幽默；只有真正涉及牺牲、分离、死亡、经典结局落点的少数节拍需要克制，其他部分应保持轻快有趣。
+            - 【严重禁区】严禁出现现代政治宣传腔、政策口号、党政国家叙述、人民群众总结、国际合作、现代治理、民族复兴等与神话主线无关的内容。
             
             - 【幽默类型必须多样化（必须从中选用多种，不能只用一种）】：
               1）夸张：对处境、能力、后果做夸张形容（如「十个太阳？我上次打猎遇上十只野猪也没这么累」「这弓再拉一次，我胳膊能直接当柴烧」），让读者感到「说得太夸张了」的好笑。
@@ -386,12 +1176,13 @@ def get_myth_system_prompt_base(reference_content=None):
               6）拆台与互怼：A 说一句正经或装腔的，B 立刻用一句接地气的吐槽拆台（如「咱们是去救苍生的」「救完苍生能先救救我的腿吗，走不动了」）。
             - 同一篇中应交替出现至少 3 种以上类型（夸张、反差、错误逻辑、嘴硬、自嘲、拆台等），避免全篇只有一种语气。
             
-            - 【对话是第一幽默载体（必须严格遵守）】：
-              - 笑点优先通过对白实现：角色之间的抛接、互怼、调侃、错位理解、拆台、夸张接话，必须占全篇笑点的【至少 60%】。即：若全篇目标 15-20 处笑点，则至少 9-12 处应来自「某人说了一句好笑的话」或「两人一来一往的对话」。
-              - 每个节拍卡对应的小节中，【至少 3 个笑点】，且【至少 2 个必须是对话笑点】（甲说—乙接，或甲吐槽—乙拆台/接梗）。非关键庄重节拍可要求【至少 2 个对话笑点】。
-              - 严禁大段只有主角独白、没有他人接话的段落；主角连续自言自语不得超过 2 句，第三句须被副角打断或接话，形成对白。
-              - 世界观、灾情、任务目标等尽量通过【副角提问、主角/他人回答、再被拆台】的多轮对白展开，禁止整段用主角内心独白交代背景。
-            - 【幽默密度】整篇约 6000-8000 字时，总笑点目标【28-42 处】，三幕都要有稳定笑点分布；其中对白笑点应占多数。单次笑点 1-2 句话，可连续 2 句「一抛一接」。
+            - 【幽默来源配比（必须严格遵守）】：
+              - 笑点不能只靠一个固定副角嘴贫。全篇至少 40% 的笑点必须来自【情节本身】或【画面反差】，例如行动翻车、旁观者误解、道具误用、严肃记录与狼狈状态反差、药性/现象命名、身体反应打脸。
+              - 对白仍然重要，但固定拆台副角的互怼最多承担全篇笑点的约 1/3；其余对白笑点应分散给主角嘴硬、自嘲、村民误解、长辈补刀、旁观者错位理解等。
+              - 非关键日常/筹备/试探节拍可安排 1-2 个笑点，优先采用“1个情节/画面笑点 + 1句对白补刀”的组合；关键冲突、重大抉择、牺牲、分离和收束节拍允许 0 个笑点。
+              - 严禁大段只有主角独白；但也不要让副角每次都跳出来接话。可以让笑点来自“他说得很正经，下一秒事实拆台”的叙事反差。
+              - 世界观、灾情、任务目标等可以通过【主角行动、旁观误解、简短问答、记录反差】展开，不必每次都走“副角提问再拆台”的固定套路。
+            - 【幽默密度】整篇约 6500-8000 字时，总笑点目标约 16-26 处，前密后疏；对白、情节反差、动作翻车、旁观误解要轮换出现。单次笑点 1-2 句话，不要连续多段抢戏。
             - 【「让人笑出来」的强笑点】每幕至少 1–2 处笑点须达到**读者读到能笑出来**的强度：拆台要**一句到位、有梗**（如主角说「咱们去救苍生」→ 副角立刻接「救完苍生能先救救我的腿吗」），避免温吞水、敷衍式接话。可多用「一抛一接」的爆点、错位理解的反转、干脆的吐槽，目标是有几处能让读者真的笑出声。
             - 【必须参考样本集】：下附【全部】哪吒风格参考样本，请务必参考其对话节奏、拆台方式、生活化吐槽与亲子/师徒互怼。写作时可在文中**穿插若干仿写哪吒风格的幽默点**（如嘴硬心软、生活化比喻、一人正经一人拆台），但不要通篇都是哪吒口吻，以本神话人物与情境为主。
             - 【禁止内容】：现代职场/网络流行语（打工人、内卷、绝了等）、低俗/身体羞辱/虐人取乐、破坏神话世界观的设定。**禁止骂人、辱骂、人身攻击等低俗幽默方式**；互怼调侃仅限于「逗、皮、嘴硬」，不得出现脏话、骂街、贬损人格。其余以「好笑、对白多、类型多样」为准。
@@ -421,20 +1212,20 @@ def get_myth_system_prompt_base(reference_content=None):
             - 【每个心理活动都要有外在表现】不要只写内心想法，要写这些想法如何通过表情、动作、呼吸等外在表现体现出来；
             - 【每个环境都要多角度描写】不要只写"有山有水"，要写山的形状、颜色、高度、植被、光线、阴影，水的颜色、流速、声音、温度、反射等。
 
-            【对话与互动扩展（重点：增加对白数量与互怼式幽默）】
+            【对话与互动扩展（重点：对白服务主线，不让副角抢戏）】
             - 对话形式灵活：允许主角自言自语、内心独白，以及环境回声/回响等形式（适用于早期神话如盘古开天地等场景）；
             - 【辅助角色与任务对话】：
-              - 在不破坏神话原始人物结构的前提下，**允许为每一幕增加1-3个功能性辅助角色**（随从、童子、路人、守卫、信使、小孩等），用于承接任务信息、提出疑问、和主角进行对话互动。
-              - **全篇合计至少要有3个命名明确、贯穿多幕出现的功能型副角**，他们需要在多数节拍中轮流出现，与主角形成稳定的对话关系，而不是仅在一两个镜头中短暂露面。
+              - 在不破坏神话原始人物结构的前提下，允许设置少量功能性辅助角色（随从、童子、路人、守卫、信使、小孩等），用于承接任务信息、提出疑问、和主角进行对话互动。
+              - 全篇默认最多一名命名明确的辅助吐槽角色；如本篇已经需要反派或核心亲密关系推动主线，应优先把篇幅给核心人物。
               - 每个辅助角色必须在本幕节拍卡里交代【由来/功能/与主线关系】，只负责推动主线或制造与任务相关的对话，不得开启全新支线。
               - 第三幕允许继续使用前两幕已出现的辅助角色，但禁止在第三幕突然加入全新核心角色来改变结局走向。
-            - 【副角功能位模板（推荐至少启用3个）】：
-              - 拆台嘴碎位（喜剧引擎）：负责在主角说出“史诗台词”或严肃宣言时，用生活化、接地气的问题或吐槽拆台，形成互怼效果，同时抛出现实难题（水不够喝、路走错、东西丢了等）。**固定拆台位（必选）**：须有一名有具体名字的固定拆台副角（如小徒弟阿狗、随从铁柱），贯穿三幕与主角对嘴互怼，拆台要干脆、有梗、一句到位，追求读者能笑出来的效果；该副角须承担全篇至少 1/3 的对白笑点。
+            - 【副角功能位模板（按需启用，不得全塞）】：
+              - 拆台嘴碎位（喜剧引擎）：负责在非关键场景中用生活化、接地气的问题或吐槽拆台，形成互怼效果；关键抉择和结尾阶段必须退场或只给极短的温柔回应。
               - 规则说明位（背景信息）：负责解释“为什么会这样”“天规是什么”“灾难从何而来”，但**必须通过对白与冲突**说出，而不是像说教一样连续讲解。
               - 利益冲突位（推进矛盾）：站在与主角部分对立或有利益冲突的立场（如日灵、天庭使者、部落长老等），负责抬杠、冷嘲热讽、提出阻力，从而逼迫主角做决定或采取行动。
               - 情绪落点位（亲子/情感）：可以是孩童、母亲、长辈等角色，在关键节点用一两句极短的话，把情绪从搞笑拉回到“人心”的层面，避免故事变成纯段子。
             - 【对话轮次与密度】：
-              - 对于【非关键/非庄重】的小节，建议安排**不少于3轮"来回对白"**（即至少3次"甲说-乙接"或"主角说-环境/旁人接话"的往返），让幽默主要通过对白自然生长出来。
+              - 对于【非关键/非庄重】的小节，可安排 1-2 轮来回对白，让幽默通过对白自然生长出来。
               - 可以通过三人及以上的对话结构制造"一人端着说话、另一人拆台、第三人补刀"的层次感，但轮次要清晰，不要一大串谁在说话都看不懂。
             - 【对话里的幽默倾向】：
               - 鼓励使用轻微的互怼、调侃、温和的讽刺和开玩笑来制造笑点，语气偏"逗、皮、嘴硬"，但**不得上升为恶意攻击或人身羞辱**。
@@ -528,6 +1319,7 @@ def get_myth_system_prompt_base(reference_content=None):
               3）统计或计数（如"２０６３１字符共计二千余字符合规定条件）"、"（以下是一串数字代表文章计数值）"等）；
               4）任何表示内容未完成的提示（如"[因原文长度限制未能全部提供]"、"未完待续"等）；
               5）任何解释性文字（如"参考内容如下"、"下面是故事"、"本故事到此结束"等）。
+              6）任何小节/字数/伏笔提示（如"这段大约三百字左右"、"接下来便是下一节的内容"、"此时此刻，遥远角落里站着某人默默注视"、"注"、"备注"、"插入"、"隐藏章节"、"伏笔"等）。
             - 【禁止列表和注释】不要列点，不要使用任何形式的列表、注释或"注释：""说明："之类的段落。
             - 【禁止表情符号】不要输出 emoji、颜文字或特殊符号（例如表情图标、装饰性符号等），绝对禁止出现🐉✨、⬆️、👻🫡、🔱⚡🔥等任何表情符号或装饰性符号。
             - 【禁止解释性文字】不要解释你在做什么，不要出现"参考内容如下""下面是故事""本故事到此结束"等说明句。
@@ -538,23 +1330,25 @@ def get_myth_system_prompt_base(reference_content=None):
               3）任何非正常文本的符号组合。
             - 【偏向小说风格】可以适当弱化剧本的格式，更偏向于小说风格。动作和场景描写要融入叙述中，不要用括号标注或单独列出。采用正常中文小说的分段方式和叙述风格。
             - 【纯故事正文】输出的内容必须是纯故事正文，没有任何元文本、系统提示、道歉、回顾、统计、空行、奇怪格式符号等。读者看到的内容应该就是完整的故事，没有任何其他内容。
+            {myth_core_part}
             {rag_part}
     """
 
 
-def get_myth_planning_prompt(reference_content=None):
+def get_myth_planning_prompt(reference_content=None, myth_core=None):
     """
     用于总体大纲/分幕/节拍卡生成的精简规划提示词。
     规划阶段强调结构化、完整性和可执行性，避免把太多正文写作要求压给模型。
     """
     rag_part = f"参考内容：{reference_content if reference_content else '无'}" if reference_content else "参考内容：无"
+    myth_core_part = format_myth_core_block(myth_core)
     return f"""
             角色：你是中国神话改写项目的故事规划师，只负责产出稳定、完整、结构化的大纲与节拍卡，不写正文。
 
             规划总原则：
             - 保留原神话核心事件链、关键因果、最终结局和核心寓意。
             - 故事风格允许偏幽默、偏人物互怼，但不能破坏神话主线。
-            - 本项目目标篇幅为 6000~8000 字，因此你必须主动设计足够多的【功能性扩展场景】。
+            - 本项目目标篇幅为 6500~8500 字，硬上限 9000 字，因此你必须设计足够但克制的【功能性扩展场景】。
             - 功能性扩展场景只能用于：补动作过程、补人物关系、补笑点、补情绪推进、补结果余波。
             - 禁止为了凑字数加入与主线无关的支线、设定或新势力。
 
@@ -566,16 +1360,19 @@ def get_myth_planning_prompt(reference_content=None):
               * 第二幕：8~9 张
               * 第三幕：5~6 张
             - 每张节拍卡都必须具体，不能写成空泛的“继续推进剧情”“制造冲突”。
-            - 固定拆台副角必须贯穿三幕，承担稳定的对白笑点和情感回收功能。
+            - 辅助吐槽角色可贯穿三幕，但不是硬性必须；若使用，必须服从主角、反派、核心道具和情感关系，不能抢走主线。
             - 第三幕结尾必须保留感动收束空间。
             - 节拍卡的事件类型必须贴近神话主线，只允许：背景建立、筹备、赶路、试探、动作执行、失败尝试、环境阻力、旁观反应、关系推进、余波收束。
             - 严禁把节拍卡写成“战斗关卡设计”“系统任务说明”“科幻工程说明”或“神秘势力阴谋提示”。
             - 严禁出现抽象而失真的目标词，例如：不明人士帮助信号、修复工程、程序介入、命运审判仪式、系统、机制、工程、星域、屏障、防护罩、外挂等。
+            - 除非原神话骨架本来就有，否则禁止新增“预言者”“能预知未来的动物”“神秘路人帮手”“临时借来的外援队伍”“主持/演播/直播场景”“数值化设定”。
+            - 新增角色、新道具、新地点必须服务主线，并且要能在大纲里说清其来源和功能；不能只为了制造笑点而突然冒出来。
 
             输出边界：
             - 只输出大纲和节拍卡，不写正文，不写解释，不写道歉。
             - 不要使用英文，不要写元文本，不要写“以下是”“说明如下”。
 
+            {myth_core_part}
             {rag_part}
     """
 
@@ -625,10 +1422,12 @@ def get_humor_samples():
         return None
 
 
-def get_punchline_examples():
+def get_punchline_examples(myth_core: dict = None, limit: int = 10):
     """
     从 knowledgeBase/humor_punchline_examples.txt 加载人为挑选的「让人笑出来」级对白示例。
     文件格式：以 --- 分隔每段示例，# 开头的行忽略。用于方案二：精选少样本注入提示词。
+    支持在示例块内写【适用神话：xxx】标签；生成时优先选择当前神话的专属样本，
+    再补少量通用样本，避免所有故事共用同一套哪吒/后羿式吐槽。
     """
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -645,15 +1444,79 @@ def get_punchline_examples():
         blocks = [b.strip() for b in text.split('---') if b.strip()]
         if not blocks:
             return ""
-        result = "\n\n".join(blocks)
-        print(f"已加载 {len(blocks)} 条「让人笑出来」对白示例")
+
+        title = (myth_core or {}).get("title", "")
+        aliases = set((myth_core or {}).get("aliases", []) or [])
+        if title:
+            aliases.add(title)
+
+        matched = []
+        general = []
+        untagged = []
+        for block in blocks:
+            tag_match = re.search(r'【适用神话[：:]\s*([^】]+)】', block)
+            if not tag_match:
+                untagged.append(block)
+                continue
+            tags = {item.strip() for item in re.split(r'[、,，/｜|]', tag_match.group(1)) if item.strip()}
+            clean_block = re.sub(r'【适用神话[：:]\s*[^】]+】\s*', '', block).strip()
+            if not clean_block:
+                continue
+            if "通用" in tags:
+                general.append(clean_block)
+            elif aliases and (tags & aliases):
+                matched.append(clean_block)
+
+        selected = matched[:limit]
+        if len(selected) < limit:
+            selected.extend(general[: max(0, min(3, limit - len(selected)))])
+        if len(selected) < limit and not matched:
+            selected.extend(untagged[: max(0, limit - len(selected))])
+        if not selected:
+            selected = blocks[:limit]
+
+        result = "\n\n".join(selected[:limit])
+        if title:
+            print(f"已为《{title}》加载 {len(selected[:limit])} 条「让人笑出来」对白示例（专属 {len(matched)} 条）")
+        else:
+            print(f"已加载 {len(selected[:limit])} 条「让人笑出来」对白示例")
         return result
     except Exception as e:
         print(f"加载 humor_punchline_examples.txt 时出错: {e}")
         return ""
 
 
-def get_act3_emotional_system_prompt(reference_content=None):
+def get_myth_specific_humor_guidance(myth_core: dict = None) -> str:
+    """
+    给特定神话补充“情节型笑点”方向，避免长篇只靠固定副角互怼。
+    """
+    title = (myth_core or {}).get("title", "")
+    if title == "神农尝百草":
+        return """
+【《神农尝百草》专属幽默机制】
+- 本篇必须让笑点从“试药过程”里长出来，不要只让阿喜/随从在旁边嘴贫。
+- 可轮换以下强笑点来源：
+  1）试药反差：神农认真记录“微苦回甘”，下一秒舌头肿得说不清字。
+  2）村民误解：村民以为他在研究吃法，递盐、递水、问能不能蘸着吃；误解必须贴着救人压力，不能变美食支线。
+  3）辅助翻车：阿喜想叼“救命草”，结果叼来自己爱啃的草；翻车后要迅速回到主线判断。
+  4）药性命名：临时记名要有严肃又好笑的反差，如“入口三息闭嘴草”“吃一口能让人反省半日”，但最终仍要回到药性记录。
+  5）严肃记录与狼狈状态反差：他一边吐得天昏地暗，一边坚持写“口感尚可，不宜推荐”。
+- 每个非庄重节拍优先采用“一个情节/画面笑点 + 一句短对白补刀”。阿喜可以补刀，但连续两拍都由阿喜承包笑点时，下一拍必须换成村民误解、记录反差或身体反应拆台。
+"""
+    if title == "北冥鲲鹏":
+        return """
+【《北冥鲲鹏》专属写作与幽默机制】
+- 本篇不是怪物变异故事，变化描写必须偏“鳞化羽、背若泰山、翼若云垂、海水翻涌、风托其身”，不要写腐蚀液、胸口异物、烂肉、掉渣、器官变形等身体恐怖。
+- 核心事件链必须清楚完成：北冥有鲲 → 鲲化为鹏 → 鹏翼若垂天之云 → 乘六月大风 → 徙于南冥天池。每一幕都要推动这条链，不要扩成港口围观、渔船事故或山崖灾难。
+- “六月大风”必须是第二幕后半或第三幕起飞的核心转折：风不是普通阻碍，而是天地托举大鹏的力量。必须写出“等风来/借风起”的领悟。
+- 辅助吐槽角色若出现，前期可以短促嘲笑，中期转为震惊，后期必须沉默或认可；越接近起飞与南冥远举，吐槽越少。
+- 幽默只能来自古风场景反差：小鱼误会、旁观者把大鹏看成山影、阿浪嘴硬不肯承认震撼。禁止现代物件和现代梗，如手电筒、导航仪、没信号、捕鱼达人、变形金刚等。
+- 场景路线保持统一：北冥深海 → 海面破开 → 高空风口 → 南冥天池。不要突然转到东海、码头、商船、昆仑雪峰等无关地点。
+"""
+    return ""
+
+
+def get_act3_emotional_system_prompt(reference_content=None, myth_core=None):
     """
     获取第三幕专用的感动收束优先系统提示词
     从"幽默优先"切换为"感动收束优先"
@@ -663,6 +1526,7 @@ def get_act3_emotional_system_prompt(reference_content=None):
                 只使用与本次神话改写强相关的内容样本，不引用其他世界观或门派设定；
                 参考内容：{reference_content if reference_content else "无"}
     """ if reference_content else ""
+    myth_core_part = format_myth_core_block(myth_core)
     
     return f"""
             角色：你是一名擅长改写中国神话故事的影视编剧，专注于第三幕的感动收束。
@@ -684,10 +1548,10 @@ def get_act3_emotional_system_prompt(reference_content=None):
             - 例如允许："你别磨蹭，我还听得见。"（嘴硬但温柔）
             - 不允许："师父你现在像条晾干的鱼。"（纯搞笑，会打断情绪沉浸）
             
-            【情感落点角色固定】
-            - 必须明确固定拆台副角为情感落点角色（如铁牛、小徒弟等）
-            - 第三幕结尾必须由该情感落点角色完成情感回应
-            - 群众/环境只能辅助，不能替代该角色
+            【情感落点角色】
+            - 第三幕结尾的情感落点应优先落在原神话核心关系上，例如夫妻、亲子、师徒、守护者与被守护者。
+            - 辅助吐槽角色只能作为旁观见证或极轻的余味，不得替代核心人物完成情感回应。
+            - 群众/环境只能辅助，不能替代核心关系。
             
             【神话骨架强约束（不可违反）】
             - 本文必须完整讲述所选原版神话从开端到结尾的全部关键事件链，不得跳过或模糊处理核心节点。
@@ -735,7 +1599,9 @@ def get_act3_emotional_system_prompt(reference_content=None):
             - 【禁止表情符号】不要输出 emoji、颜文字或特殊符号。
             - 【禁止解释性文字】不要解释你在做什么。
             - 【禁止空行和空白内容】绝对禁止在内容中间或结尾生成任何空行、空白段落或空白内容。
+            - 【禁止小节/字数提示】绝对禁止出现"这段大约多少字左右""接下来便是下一节的内容""此时此刻，遥远角落里站着某人默默注视"等写作备注。
             - 【偏向小说风格】可以适当弱化剧本的格式，更偏向于小说风格。
+            {myth_core_part}
             {rag_part}
     """
 
@@ -796,29 +1662,43 @@ def get_touching_foreshadow_examples():
         return ""
 
 
-def generate_punchline_dialogues_for_beat(beat, overall_outline, theme_prompt, punchline_examples_text):
+def generate_punchline_dialogues_for_beat(beat, overall_outline, theme_prompt, punchline_examples_text, myth_core=None):
     """
-    方案一·第一阶段：针对当前节拍专门生成 2-3 组「让人笑出来」级的互怼对白。
+    方案一·第一阶段：针对当前节拍专门生成 2-3 组「让人笑出来」级的笑点方案。
+    方案同时覆盖对白和情节反差，避免长篇只靠固定副角互怼。
     若该节拍属于关键转折/牺牲/收束等庄重场景，则跳过并返回空字符串。
     """
     goal = (beat.get('场景目标') or '')
-    if any(kw in goal for kw in ['关键转折', '重大抉择', '牺牲代价', '收束画面', '终极使命完成']):
+    if any(kw in goal for kw in ['关键转折', '重大抉择', '牺牲代价', '收束画面', '终极使命完成', '分离', '死亡', '化作', '哭倒', '惩罚']):
         return ""
     scene = goal + "；" + (beat.get('画面要素') or '')
     examples_block = f"\n【参考以下示例的节奏与梗的密度】\n{punchline_examples_text}" if punchline_examples_text else ""
+    myth_title = (myth_core or {}).get("title", "")
+    must_include = "、".join((myth_core or {}).get("must_include", [])[:8])
+    humor_mechanism = beat.get("幽默机制", "") if isinstance(beat, dict) else ""
     system_msg = {
         "role": "system",
-        "content": "你是喜剧对白写手，只输出互怼/拆台对白，不写叙述、不写动作描写。对白要干脆、有梗，让读者读到能笑出来。主角与固定拆台副角（如小徒弟、随从等，若故事中有名字请使用）一来一往，拆台接话要一句到位。"
+        "content": "你是神话改写项目的喜剧设计师，只输出可嵌入正文的笑点方案。笑点必须贴合当前神话的道具、行动、身体反应、旁观误解或人物关系；不要只写固定副角互怼。禁止现代职场、网络流行语、系统面板、直播综艺、低俗辱骂和破坏神话世界观的梗。"
     }
     user_msg = {
         "role": "user",
-        "content": f"""针对以下节拍情境，只输出 2-3 组互怼对白。每组格式：主角说一句，固定拆台副角接一句拆台（可用「主角：」「小徒弟：」等标注）。要求干脆、有梗、让人读能笑出来。不要写任何叙述或说明。
+        "content": f"""针对以下节拍情境，只输出 2 组笑点方案。至少 1 组必须是【非对白情节笑点】（例如动作反差、旁观误解、道具翻车、严肃记录与狼狈状态反差、命名梗），另 1 组可以是简短互怼对白。要求干脆、有梗、让人读能笑出来。不要写解释。
 
 故事主题：{theme_prompt}
+当前神话：{myth_title}
+本神话识别点：{must_include}
 本小节情境：{scene}
+本小节优先幽默机制：{humor_mechanism or "请根据情境自行选择，但不要只用互怼"}
 {examples_block}
 
-请直接输出 2-3 组对白，每组换行，不要编号、不要解释。"""
+要求：
+- 必须围绕本小节的动作、道具、身体感受、旁观误解或当前压力制造笑点，不要泛泛调侃。
+- 可以模仿示例的“正经话被一句拆台打歪”的节奏，但不要照抄示例原句。
+- 非对白情节笑点请写成一句可直接改写进正文的短场面，例如“神农刚写下‘微苦回甘’，舌头就肿得把‘甘’说成了‘肝’。”
+- 互怼对白最多一组，不要让同一个辅助角色承包所有笑点。
+- 若当前节拍偏庄重，只输出 1 组非常轻的嘴硬式对白。
+
+请直接输出 1-2 组，每组换行，不要编号、不要解释。"""
     }
     reply = call_qianwen_api(
         [system_msg, user_msg],
@@ -831,13 +1711,13 @@ def generate_punchline_dialogues_for_beat(beat, overall_outline, theme_prompt, p
     return cleaned if cleaned else ""
 
 
-def generate_outline(theme, rag_content):
+def generate_outline(theme, rag_content, myth_core=None):
     """
     生成总体大纲（完整故事线）
     """
     system_message = {
         "role": "system",
-        "content": get_myth_planning_prompt(rag_content) + f"""
+        "content": get_myth_planning_prompt(rag_content, myth_core) + f"""
             请为神话改写《{theme}》生成完整的总体大纲：
             
             要求：
@@ -846,10 +1726,11 @@ def generate_outline(theme, rag_content):
             - 大纲长度约500-700字
             - 风格：类似电影《哪吒降世》的幽默改写
             - 必须确保故事线完整，有明确的起承转合
-            - 大纲中须明确交代至少一名【固定拆台副角】的姓名与身份（如小徒弟阿狗、随从铁柱），该角色将贯穿全文与主角对嘴互怼、制造笑点，不能只有路人或无名群众。
-            - 全篇最终目标是生成 6000~8000 字的长篇神话改写，所以总体大纲必须比普通版本更厚实，除了原神话主干事件，还要主动加入【功能性扩展场景】。
-            - 允许新增但必须受控的【功能性扩展场景】包括：踏上行动前的筹备、途中见闻、第一次失败尝试、民间/旁观者反应、主角与固定副角的争执或互相打气、阶段性喘息、行动后的余波收束。
+            - 大纲中可按需设置一名【辅助吐槽角色】的姓名与身份；如果本神话本身需要明确反派、夫妻/亲子/师徒等核心关系推动主线，优先写核心人物，不要为了笑点硬加副角。
+            - 全篇最终目标是生成 6500~8500 字的长篇神话改写，硬上限 9000 字，所以总体大纲必须比普通版本更厚实但不能膨胀，除了原神话主干事件，只加入必要的【功能性扩展场景】。
+            - 允许新增但必须受控的【功能性扩展场景】包括：踏上行动前的筹备、途中见闻、第一次失败尝试、民间/旁观者反应、核心人物间的争执或互相打气、阶段性喘息、行动后的余波收束。
             - 这些新增场景必须服务于以下至少一项：增强幽默、拉长动作过程、补足人物关系、强化情感伏笔、推动主线决策。严禁加入与主线无关的闲笔。
+            - 总体大纲里禁止出现未铺垫的预言角色、会预知未来的动物、神秘援手、演播/直播类场景、信心值/任务值等数值化表达。
         """
     }
     
@@ -868,7 +1749,7 @@ def generate_outline(theme, rag_content):
     return clean_markdown(reply)
 
 
-def split_outline_to_acts(overall_outline, theme, rag_content):
+def split_outline_to_acts(overall_outline, theme, rag_content, myth_core=None):
     """
     将总体大纲分配到三幕，生成三幕分别的大纲和镜头节拍卡（beats）
     
@@ -878,7 +1759,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     """
     system_message = {
         "role": "system",
-        "content": get_myth_planning_prompt(rag_content) + f"""
+        "content": get_myth_planning_prompt(rag_content, myth_core) + f"""
             请根据总体大纲，按【背景→高潮过程→结果】三幕结构分配，生成三幕分别的【详细】大纲和【镜头节拍卡】。
             
             【三幕定位与篇幅比例（必须严格遵守）】
@@ -894,12 +1775,13 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
             要求：
             - 三幕之间必须承接，不能重复；第一幕结尾要自然衔接到第二幕的开端（如「抵达」「开始行动」）。
             - 每幕大纲要具体、可执行，包含该幕内应出现的具体事件、情节点和必要细节，便于后续按节拍卡逐段写作时不漏情节。
-            - 为了支撑 6000~8000 字长篇成稿，每幕都要主动安排若干【功能性扩展节拍】。这些节拍只能用于：补动作、补关系、补笑点、补情绪推进、补后果展示，严禁单纯凑字数。
+            - 为了支撑 6500~8500 字长篇成稿，每幕都要主动安排若干【功能性扩展节拍】，但总量必须克制。这些节拍只能用于：补动作、补关系、补笑点、补情绪推进、补后果展示，严禁单纯凑字数。
             - 【节拍卡与大纲严格对齐（关键要求）】：
               * 节拍卡必须严格按照本幕大纲中的关键情节点顺序生成，每张节拍卡的"场景目标"必须直接对应大纲中的一个或多个具体事件，不能偏离大纲内容。
               * 节拍卡的数量和顺序必须覆盖大纲中的所有关键情节点，不能遗漏大纲中提到的任何重要事件，也不能添加大纲中没有的新情节。
               * 例如：如果第二幕大纲写了"抵达山顶、面对十日、射落第1个太阳、射落第2-3个太阳、射落第4-6个太阳、射落第7-9个太阳、留下最后一日的决定、体力耗尽"，那么节拍卡必须按照这个顺序，每张节拍卡对应其中一个或几个步骤，不能跳过或打乱顺序。
               * 节拍卡的"场景目标"应该明确写出对应大纲中的哪个具体事件（如"射落第1个太阳"而不是模糊的"开始射箭"），确保节拍卡与大纲一一对应。
+              * 如果本幕大纲没有写到某个新角色、新道具、新地点、新设定，该节拍卡就绝对不能新增它。
             - 在设计每张【镜头节拍卡】时，要为后续的幽默留出空间：预留至少一个【对白上的抛接点】和一个【非对白的反差点】（可通过画面要素或情绪推动中的具体细节体现）。
             - 第一幕输出 5-6 张节拍卡，第二幕输出 8-9 张节拍卡，第三幕输出 5-6 张节拍卡。每张节拍卡必须包含以下字段：
               * 场景目标：这一小段要完成什么叙事功能（铺垫/冲突升级/关键转折/代价/收束等）
@@ -908,7 +1790,9 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
               * 信息增量：这一节新增的信息是什么（不能重复前文）
               * 禁止项：列出1-2条"这一节绝对不能写什么"（如新角色突然出现、跳到结局、跑去写日常等）
               * 情感伏笔：这一拍为结尾感动埋什么伏笔（如主角把唯一资源留给别人、平时插科打诨的人在关键时刻突然认真、一个反复出现的小动作等）
-              * 关系推进：主角和情感落点角色（固定拆台副角或其他重要角色）的关系如何变化（如从互怼到担心、从表面嫌弃到深层守护等）
+              * 关系推进：主角和情感落点角色（核心人物或必要辅助角色）的关系如何变化（如从误解到理解、从担心到守护等）
+              * 幽默机制：本拍优先使用哪一种笑点来源，必须具体到情节，例如“试药反差”“村民误解”“道具翻车”“严肃记录与狼狈状态反差”“药性命名”，不能只写“互怼”
+            - 对所有神话通用：禁止写出“预知未来的动物”“神秘外援”“演播厅/直播间”“信心值/任务值”“系统/程序/工程”等跑偏设定。
             
             三幕逻辑总结：
             - 第一幕：背景与动机建立完毕，以「踏上征途/开始行动」类节点收尾。
@@ -923,7 +1807,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 总体大纲：
 {overall_outline}
 
-请将以上总体大纲分配到三幕，按【背景→高潮过程→结果】划分，生成三幕分别的【详细】大纲和【镜头节拍卡】。若总体大纲中已出现【固定拆台副角】的姓名与身份，请在后续节拍卡中延续该角色，确保其贯穿三幕与主角互怼。要求：
+请将以上总体大纲分配到三幕，按【背景→高潮过程→结果】划分，生成三幕分别的【详细】大纲和【镜头节拍卡】。若总体大纲中已出现【辅助吐槽角色】的姓名与身份，请在后续节拍卡中谨慎延续该角色，但必须让核心人物、核心道具和主线冲突保持主位。要求：
 1. 第一幕【背景】大纲（约300-420字）：包含灾因、世界设定、人物登场、为何非做不可、踏上征程等，必须写清神话背景（如十日并出、百姓遭殃），不能省略关键背景。结尾落在「开始行动/上路」。允许加入筹备、赶路、第一次试探、百姓反应等功能性扩展场景。
 2. 第二幕【高潮过程】大纲（约450-620字）：核心行动的完整过程，必须展开为具体步骤。例如后羿射日须写出：抵达山顶、面对十日、逐箭射落（射落第1个…第9个、留下最后一日的决定）、体力与代价。盘古开天须写出：挥斧劈开、撑天、踏地等阶段。不得一笔带过或合并成「他一口气完成了」。允许加入与主线强相关的失败尝试、环境阻力、同伴互怼、阶段性喘息，但不许跑题。
 3. 第三幕【结果】大纲（约300-420字）：行动完成后的世界变化、民众反应、主角收束与结局寓意，不能重复前两幕。允许加入余波处理、关系回收、世界复苏与情感回应等功能性扩展场景。
@@ -932,6 +1816,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
    - 每张节拍卡的"场景目标"必须明确对应大纲中的一个具体事件，不能偏离。例如：如果大纲写了"射落第1个太阳"，节拍卡的场景目标就应该是"射落第1个太阳"或"完成射落第1个太阳的动作"，而不是"开始射箭"或"面对困难"等模糊表述。
    - 节拍卡的数量必须足够覆盖大纲中的所有关键情节点，不能遗漏。如果大纲中有8个关键步骤，就需要更多节拍卡把它们拆细，同时加入紧贴主线的扩展节拍。
    - 节拍卡的顺序必须与大纲中事件的顺序一致，不能打乱。
+   - 如果大纲里没有写到某个新角色、新道具、新地点、新设定，该节拍卡绝对不能新增它。
 5. 第一幕 5-6 张节拍卡，第二幕 8-9 张节拍卡，第三幕 5-6 张节拍卡。每张节拍卡必须包含以下字段：
    - 场景目标：这一小段要完成什么叙事功能
    - 画面要素：至少2个可拍摄的画面/动作细节（非抽象词）
@@ -939,7 +1824,9 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
    - 信息增量：这一节新增的信息是什么（不能重复前文）
    - 禁止项：列出1-2条"这一节绝对不能写什么"
    - 情感伏笔：这一拍为结尾感动埋什么伏笔（如主角把唯一资源留给别人、平时插科打诨的人在关键时刻突然认真、一个反复出现的小动作等）
-   - 关系推进：主角和情感落点角色（固定拆台副角或其他重要角色）的关系如何变化（如从互怼到担心、从表面嫌弃到深层守护等）
+   - 关系推进：主角和情感落点角色（核心人物或必要辅助角色）的关系如何变化（如从误解到理解、从担心到守护等）
+   - 幽默机制：本拍优先使用的笑点来源；必须在对白互怼、动作反差、旁观误解、道具翻车、严肃记录反差、命名梗、嘴硬自嘲中轮换，避免连续依赖同一辅助角色吐槽
+6. 通用禁区：不要生成预言动物、神秘外援、演播厅/直播间、信心值/任务值、系统/程序/工程等跑偏设定。
 
 请严格按照以下格式输出：
 第一幕大纲（xx字）：[第一幕的具体内容]
@@ -952,6 +1839,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
 禁止项：[1-2条禁止项]
 情感伏笔：[为结尾感动埋什么伏笔]
 关系推进：[主角和情感落点角色的关系如何变化]
+幽默机制：[本拍优先使用的笑点来源]
 
 第一幕节拍卡2：
 场景目标：[叙事功能]
@@ -996,17 +1884,25 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     
     # 解析三幕大纲和节拍卡
     cleaned_reply = clean_markdown(reply)
+    parse_reply = cleaned_reply
+    parse_reply = re.sub(r'(?m)^\s*[-*]\s*(?=(场景目标|画面要素|情绪推动|信息增量|禁止项|情感伏笔|关系推进|幽默机制)[：:])', '', parse_reply)
+    parse_reply = re.sub(
+        r'(第[一二三]幕)\s*(?:镜头)?\s*节拍卡\s*([0-9一二三四五六七八九十]+)',
+        r'\1节拍卡\2',
+        parse_reply
+    )
+    parse_reply = re.sub(r'(第[一二三]幕)\s*大纲', r'\1大纲', parse_reply)
     
     # 尝试提取三幕大纲（支持新格式：第一幕大纲（xx字）：）
-    act1_match = re.search(r'第一幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第一幕节拍卡|第二幕|$)', cleaned_reply, re.DOTALL)
+    act1_match = re.search(r'第一幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第一幕节拍卡|第二幕|$)', parse_reply, re.DOTALL)
     if not act1_match:
-        act1_match = re.search(r'第一幕[大纲：:]*\s*(.*?)(?=第一幕节拍卡|第二幕|$)', cleaned_reply, re.DOTALL)
-    act2_match = re.search(r'第二幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第二幕节拍卡|第三幕|$)', cleaned_reply, re.DOTALL)
+        act1_match = re.search(r'第一幕[大纲：:]*\s*(.*?)(?=第一幕节拍卡|第二幕|$)', parse_reply, re.DOTALL)
+    act2_match = re.search(r'第二幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第二幕节拍卡|第三幕|$)', parse_reply, re.DOTALL)
     if not act2_match:
-        act2_match = re.search(r'第二幕[大纲：:]*\s*(.*?)(?=第二幕节拍卡|第三幕|$)', cleaned_reply, re.DOTALL)
-    act3_match = re.search(r'第三幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第三幕节拍卡|$)', cleaned_reply, re.DOTALL)
+        act2_match = re.search(r'第二幕[大纲：:]*\s*(.*?)(?=第二幕节拍卡|第三幕|$)', parse_reply, re.DOTALL)
+    act3_match = re.search(r'第三幕[大纲：:]*（[^）]*）[：:]*\s*(.*?)(?=第三幕节拍卡|$)', parse_reply, re.DOTALL)
     if not act3_match:
-        act3_match = re.search(r'第三幕[大纲：:]*\s*(.*?)(?=第三幕节拍卡|$)', cleaned_reply, re.DOTALL)
+        act3_match = re.search(r'第三幕[大纲：:]*\s*(.*?)(?=第三幕节拍卡|$)', parse_reply, re.DOTALL)
     
     act1_outline = act1_match.group(1).strip() if act1_match else ""
     act2_outline = act2_match.group(1).strip() if act2_match else ""
@@ -1015,9 +1911,13 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     # 解析节拍卡（新格式：包含多个字段的字典）
     def parse_beat_cards(act_name, cleaned_reply):
         """解析节拍卡，返回字典列表"""
-        pattern = rf'{act_name}节拍卡\d+[：:]*\s*(.*?)(?={act_name}节拍卡\d+|第二幕|第三幕|$)'
-        matches = re.finditer(pattern, cleaned_reply, re.DOTALL)
+        # 只能把“行首的下一张节拍卡/下一幕大纲”视作边界。
+        # 旧正则把正文里的“第三幕核心节点”也当边界，导致第三幕经常解析成 0-1 张卡。
+        card_no = r'(?:\d+|[一二三四五六七八九十]+)'
+        pattern = rf'^\s*{act_name}节拍卡{card_no}[：:、.．]*\s*(.*?)(?=^\s*{act_name}节拍卡{card_no}[：:、.．]|^\s*(?:第一幕|第二幕|第三幕)大纲|^\s*(?:第一幕|第二幕|第三幕)节拍卡{card_no}[：:、.．]|$)'
+        matches = re.finditer(pattern, cleaned_reply, re.DOTALL | re.MULTILINE)
         beat_cards = []
+        field_boundary = r'(?=场景目标|画面要素|情绪推动|信息增量|禁止项|情感伏笔|关系推进|幽默机制|$)'
         for match in matches:
             beat_text = match.group(1).strip()
             if not beat_text:
@@ -1025,33 +1925,36 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
             # 解析各个字段
             beat_card = {}
             # 场景目标
-            goal_match = re.search(r'场景目标[：:]*\s*(.*?)(?=画面要素|情绪推动|信息增量|禁止项|$)', beat_text, re.DOTALL)
+            goal_match = re.search(r'场景目标[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if goal_match:
                 beat_card['场景目标'] = goal_match.group(1).strip()
             # 画面要素
-            visual_match = re.search(r'画面要素[：:]*\s*(.*?)(?=情绪推动|信息增量|禁止项|$)', beat_text, re.DOTALL)
+            visual_match = re.search(r'画面要素[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if visual_match:
                 beat_card['画面要素'] = visual_match.group(1).strip()
             # 情绪推动
-            emotion_match = re.search(r'情绪推动[：:]*\s*(.*?)(?=信息增量|禁止项|$)', beat_text, re.DOTALL)
+            emotion_match = re.search(r'情绪推动[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if emotion_match:
                 beat_card['情绪推动'] = emotion_match.group(1).strip()
             # 信息增量
-            info_match = re.search(r'信息增量[：:]*\s*(.*?)(?=禁止项|$)', beat_text, re.DOTALL)
+            info_match = re.search(r'信息增量[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if info_match:
                 beat_card['信息增量'] = info_match.group(1).strip()
             # 禁止项
-            ban_match = re.search(r'禁止项[：:]*\s*(.*?)(?=情感伏笔|关系推进|$)', beat_text, re.DOTALL)
+            ban_match = re.search(r'禁止项[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if ban_match:
                 beat_card['禁止项'] = ban_match.group(1).strip()
             # 情感伏笔
-            emotion_foreshadow_match = re.search(r'情感伏笔[：:]*\s*(.*?)(?=关系推进|$)', beat_text, re.DOTALL)
+            emotion_foreshadow_match = re.search(r'情感伏笔[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if emotion_foreshadow_match:
                 beat_card['情感伏笔'] = emotion_foreshadow_match.group(1).strip()
             # 关系推进
-            relationship_match = re.search(r'关系推进[：:]*\s*(.*?)$', beat_text, re.DOTALL)
+            relationship_match = re.search(r'关系推进[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
             if relationship_match:
                 beat_card['关系推进'] = relationship_match.group(1).strip()
+            humor_match = re.search(r'幽默机制[：:]*\s*(.*?)' + field_boundary, beat_text, re.DOTALL)
+            if humor_match:
+                beat_card['幽默机制'] = humor_match.group(1).strip()
             
             # 如果解析到了至少一个字段，就添加到列表
             if beat_card:
@@ -1073,9 +1976,9 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
         
         return beat_cards[:9]  # 收紧节拍卡数量上限，避免稀释单卡质量
     
-    act1_beats = parse_beat_cards('第一幕', cleaned_reply)
-    act2_beats = parse_beat_cards('第二幕', cleaned_reply)
-    act3_beats = parse_beat_cards('第三幕', cleaned_reply)
+    act1_beats = parse_beat_cards('第一幕', parse_reply)
+    act2_beats = parse_beat_cards('第二幕', parse_reply)
+    act3_beats = parse_beat_cards('第三幕', parse_reply)
     
     # 验证节拍卡数量是否合理
     if len(act1_beats) < 5:
@@ -1107,7 +2010,7 @@ def split_outline_to_acts(overall_outline, theme, rag_content):
     }
 
 
-def outline_plan_is_usable(acts_outline: dict) -> bool:
+def outline_plan_is_usable(acts_outline: dict, myth_core: dict = None) -> bool:
     """
     规划结果验收：
     - 三幕大纲不能为空
@@ -1117,6 +2020,23 @@ def outline_plan_is_usable(acts_outline: dict) -> bool:
         return False
 
     if not acts_outline.get("act1") or not acts_outline.get("act2") or not acts_outline.get("act3"):
+        return False
+
+    combined_outline = "\n".join([
+        acts_outline.get("act1", ""),
+        acts_outline.get("act2", ""),
+        acts_outline.get("act3", ""),
+    ])
+    if contains_myth_core_violation(combined_outline, myth_core or {}):
+        return False
+    if myth_core and not myth_core_requirement_met(combined_outline, myth_core, final=False):
+        return False
+
+    if contains_plan_drift(acts_outline.get("act1", ""), myth_core):
+        return False
+    if contains_plan_drift(acts_outline.get("act2", ""), myth_core):
+        return False
+    if contains_plan_drift(acts_outline.get("act3", ""), myth_core):
         return False
 
     if len(acts_outline.get("act1_beats", [])) < 5:
@@ -1135,16 +2055,20 @@ def outline_plan_is_usable(acts_outline: dict) -> bool:
             beat_text = " ".join(
                 str(beat.get(k, "")) for k in ["场景目标", "画面要素", "信息增量", "禁止项"]
             ) if isinstance(beat, dict) else str(beat)
-            if any(term in beat_text for term in BAD_PLAN_TERMS):
+            if isinstance(beat, dict):
+                for required_field in ("场景目标", "画面要素", "信息增量"):
+                    if len(str(beat.get(required_field, "")).strip()) < 4:
+                        return False
+            if contains_plan_drift(beat_text, myth_core):
                 return False
 
     return True
 
 
-def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act3_outline, prompt, rag_content):
+def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act3_outline, prompt, rag_content, myth_core=None):
     """
-    基于总体大纲和三幕大纲，生成一条贯穿三幕的感动故事线索。
-    这条线索应该从第一幕开始铺垫，在第二幕发展，在第三幕达到高潮并收束。
+    基于总体大纲和三幕大纲，生成一条贯穿三幕的情绪线索。
+    优先服务娱乐性与人物弧光；只有故事自然适合时才做感动升华。
     
     返回: {
         "act1_touching": "第一幕的感动线索部分（铺垫）",
@@ -1154,33 +2078,33 @@ def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act
     """
     system_message = {
         "role": "system",
-        "content": get_myth_system_prompt_base(rag_content) + f"""
-            你是一位擅长设计情感线索的编剧。请基于给定的故事大纲，设计一条贯穿三幕的感动故事线索。
+        "content": get_myth_system_prompt_base(rag_content, myth_core) + f"""
+            你是一位擅长设计情绪线索的编剧。请基于给定的故事大纲，设计一条贯穿三幕的情绪线索。
             
-            【感动线索的设计原则】
-            - 这条线索应该与主线故事自然融合，不是生硬添加的支线
-            - 第一幕：铺垫阶段 - 埋下感动的种子（如主角的动机、与重要人物的关系、内心的牵挂等）
-            - 第二幕：发展阶段 - 在主角行动过程中，感动线索逐渐显现（如对世界的守护、对亲人的思念、对使命的坚持等）
-            - 第三幕：高潮与收束 - 感动线索达到高潮，通过自我牺牲、深情守护、感人收束等方式，营造感人的结局
+            【情绪线索的设计原则】
+            - 这条线索应该与主线故事自然融合，不是生硬添加的支线。
+            - 本项目是神话娱乐改写，整体优先幽默、风趣、轻微搞怪；情绪升华只做自然余味，不要写成作文式煽情。
+            - 第一幕：铺垫阶段 - 埋下人物动机、误解、笑点来源或小小执念。
+            - 第二幕：发展阶段 - 在主角行动过程中，让误解、笑点和压力升级。
+            - 第三幕：收束阶段 - 根据神话类型选择轻松余味、爽朗认可、温柔一笑或必要的感动升华。
             
-            【感动元素类型】
-            - 自我牺牲：主角为了完成使命，付出巨大代价
-            - 深情守护：主角对世界、对他人、对亲人的深情守护和付出
-            - 感人收束：通过环境变化、人物反应、情感升华等方式，营造感人的收束氛围
-            - 情感共鸣：通过副角/旁观者的反应、对话、动作等，增强情感共鸣
+            【可选情绪类型】
+            - 幽默回收：前文的误会、道具翻车、口头禅在结尾变成轻松余味。
+            - 爽朗认可：曾经嘲笑的人承认主角有点本事，但可以嘴硬。
+            - 温柔升华：主角完成核心行动后，环境或人物反应用一两个动作点到为止。
+            - 悲剧/牺牲：只有原神话本身需要悲剧或牺牲时才使用，不要强塞。
             
             【注意事项】
-            - 感动线索要自然，不能为了感动而强行煽情
-            - 要与幽默基调平衡，感动与幽默可以并存，但不能互相削弱
-            - 如果故事本身不适合感动线索（如纯喜剧），可以设计较轻的情感线索
-            - 每幕的感动线索部分应该具体、可执行，便于在写作时融入
+            - 情绪线索要自然，不能为了感动而强行煽情。
+            - 要与幽默基调平衡；若结尾不方便感动，就用风趣、轻快、余味式收束。
+            - 每幕线索应该具体、可执行，便于在写作时融入。
         """
     }
     
     user_message = {
         "role": "user",
         "content": f"""
-请为《{prompt}》设计一条贯穿三幕的感动故事线索。
+请为《{prompt}》设计一条贯穿三幕的情绪线索，优先服务幽默风趣和人物弧光；若结尾适合，再自然加入轻微升华。
 
 【总体大纲】
 {overall_outline}
@@ -1194,15 +2118,15 @@ def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act
 【第三幕大纲】
 {act3_outline}
 
-请设计一条感动故事线索，并将其分成三部分，分别对应三幕：
-1. 第一幕感动线索（铺垫阶段）：约50-80字，描述在第一幕中如何埋下感动的种子
-2. 第二幕感动线索（发展阶段）：约50-80字，描述在第二幕中感动线索如何发展
-3. 第三幕感动线索（高潮与收束）：约80-120字，描述在第三幕中如何达到感动高潮并收束
+请设计一条情绪线索，并将其分成三部分，分别对应三幕：
+1. 第一幕情绪线索（铺垫阶段）：约50-80字，描述第一幕的误解、动机或笑点种子
+2. 第二幕情绪线索（发展阶段）：约50-80字，描述第二幕如何升级压力、误会和幽默
+3. 第三幕情绪线索（收束阶段）：约80-120字，描述第三幕如何完成轻松余味、爽朗认可或自然升华
 
 请严格按照以下格式输出：
-第一幕感动线索：[第一幕的感动线索内容]
-第二幕感动线索：[第二幕的感动线索内容]
-第三幕感动线索：[第三幕的感动线索内容]
+第一幕感动线索：[第一幕的情绪线索内容]
+第二幕感动线索：[第二幕的情绪线索内容]
+第三幕感动线索：[第三幕的情绪线索内容]
         """
     }
     
@@ -1262,7 +2186,7 @@ def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act
     }
 
 
-def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats=None, touching_storyline=None):
+def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats=None, touching_storyline=None, myth_core=None):
     """
     生成第一幕（600-800字）
     """
@@ -1275,10 +2199,10 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     foreshadow_reference = f"\n\n【前置关系型样本（请学习如何在前两幕埋下情感伏笔和推进关系）】\n{foreshadow_examples}" if foreshadow_examples else ""
     
     # 第一幕：按节拍卡逐小节生成，再拼接成完整第一幕
-    system_content = get_myth_system_prompt_base(rag_content) + humor_reference + foreshadow_reference
+    system_content = get_myth_system_prompt_base(rag_content, myth_core) + humor_reference + foreshadow_reference
 
     # 方案二：加载人为挑选的「让人笑出来」对白示例，每小节注入
-    punchline_examples = get_punchline_examples()
+    punchline_examples = get_punchline_examples(myth_core)
 
     # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
     if not act1_beats:
@@ -1303,7 +2227,7 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
 
     for idx, beat in enumerate(act1_beats, 1):
         # 方案一·第一阶段：先为本节拍生成笑点对白（庄重节拍会跳过）
-        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
+        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples, myth_core)
         segment = generate_segment_for_beat(
             act_name="第一幕",
             beat_index=idx,
@@ -1319,7 +2243,8 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
             act_id="act1",
             punchlines_to_embed=punchlines,
             punchline_examples_text=punchline_examples,
-            touching_storyline=touching_storyline
+            touching_storyline=touching_storyline,
+            myth_core=myth_core
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip() if accumulated_text else segment
@@ -1328,7 +2253,7 @@ def generate_act1(act1_outline, overall_outline, rag_content, prompt, act1_beats
     return "\n\n".join(segments)
 
 
-def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, touching_storyline=None):
+def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, touching_storyline=None, myth_core=None):
     """
     生成第二幕（900-1100字）
     """
@@ -1341,9 +2266,9 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
     foreshadow_reference = f"\n\n【前置关系型样本（请学习如何在前两幕埋下情感伏笔和推进关系）】\n{foreshadow_examples}" if foreshadow_examples else ""
     
     # 第二幕：按节拍卡逐小节生成，再拼接成完整第二幕
-    system_content = get_myth_system_prompt_base(None) + humor_reference + foreshadow_reference
+    system_content = get_myth_system_prompt_base(None, myth_core) + humor_reference + foreshadow_reference
 
-    punchline_examples = get_punchline_examples()
+    punchline_examples = get_punchline_examples(myth_core)
 
     if not act2_beats:
         act2_beats = [{
@@ -1367,7 +2292,7 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
     accumulated_text = act1.strip()
 
     for idx, beat in enumerate(act2_beats, 1):
-        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
+        punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples, myth_core)
         segment = generate_segment_for_beat(
             act_name="第二幕",
             beat_index=idx,
@@ -1383,7 +2308,8 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
             act_id="act2",
             punchlines_to_embed=punchlines,
             punchline_examples_text=punchline_examples,
-            touching_storyline=touching_storyline
+            touching_storyline=touching_storyline,
+            myth_core=myth_core
         )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -1391,7 +2317,7 @@ def generate_act2(act2_outline, overall_outline, act1, prompt, act2_beats=None, 
     return "\n\n".join(segments)
 
 
-def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, touching_storyline=None, emotional_character=None):
+def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, touching_storyline=None, emotional_character=None, myth_core=None):
     """
     生成第三幕（600-800字）
     emotional_character: 情感落点角色名称（如"铁牛"、"小徒弟"等）
@@ -1400,9 +2326,9 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
     touching_ending_examples = get_touching_ending_examples()
     
     # 第三幕使用专用的感动收束优先系统提示
-    system_content = get_act3_emotional_system_prompt(None) + (f"\n\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}" if touching_ending_examples else "")
+    system_content = get_act3_emotional_system_prompt(None, myth_core) + (f"\n\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}" if touching_ending_examples else "")
 
-    punchline_examples = get_punchline_examples()
+    punchline_examples = get_punchline_examples(myth_core)
 
     # 如果没有节拍卡，退化为单节拍，交给统一逻辑处理
     if not act3_beats:
@@ -1451,11 +2377,12 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
                 target_min_len=base_min,
                 target_max_len=base_max,
                 touching_ending_examples=touching_ending_examples,
-                emotional_character=emotional_character
+                emotional_character=emotional_character,
+                myth_core=myth_core
             )
         else:
             # 其他节拍卡使用普通生成函数
-            punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples)
+            punchlines = generate_punchline_dialogues_for_beat(beat, overall_outline, prompt, punchline_examples, myth_core)
             segment = generate_segment_for_beat(
                 act_name="第三幕",
                 beat_index=idx,
@@ -1472,7 +2399,8 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
                 punchlines_to_embed=punchlines,
                 punchline_examples_text=punchline_examples,
                 touching_storyline=touching_storyline,
-                touching_ending_examples=touching_ending_examples
+                touching_ending_examples=touching_ending_examples,
+                myth_core=myth_core
             )
         segments.append(segment)
         accumulated_text = (accumulated_text + "\n" + segment).strip()
@@ -1483,8 +2411,11 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
     if not validate_act3(final_act3):
         print("警告：第三幕整体质量校验未通过（长度/格式/繁体检测），但已按节拍卡逐段生成。")
     
-    # 感动结局验收：如果不达标，只重写最后两拍
-    if not validate_touching_ending(final_act3, memory_hooks):
+    emotion_required_titles = {"梁山伯与祝英台", "孟姜女哭长城", "牛郎织女", "嫦娥奔月", "女娲补天", "盘古开天地"}
+    emotion_required = (myth_core or {}).get("title") in emotion_required_titles
+
+    # 悲剧/牺牲类神话才强制感动验收；其他娱乐改写允许用幽默余味收束。
+    if emotion_required and not validate_touching_ending(final_act3, memory_hooks):
         print("警告：第三幕感动结局验收未通过，正在重新生成最后两拍...")
         # 重新生成最后两拍
         for idx in range(max(1, total_beats - 1), total_beats + 1):
@@ -1504,7 +2435,8 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
                     target_min_len=base_min,
                     target_max_len=base_max,
                     touching_ending_examples=touching_ending_examples,
-                    emotional_character=emotional_character
+                    emotional_character=emotional_character,
+                    myth_core=myth_core
                 )
                 segments[idx - 1] = new_segment
         final_act3 = "\n\n".join(segments)
@@ -1516,7 +2448,7 @@ def generate_act3(act3_outline, overall_outline, act2, prompt, act3_beats=None, 
 def validate_act3(script: str) -> bool:
     """
     第三幕专用质量校验：
-    - 字数/字符数 > 1100 判失败（目标 600~800 字）
+    - 字数/字符数需匹配长篇第三幕目标，明显过短或过长判失败
     - 含常见繁体字判失败（粗略检测）
     - 含括号镜头/元文本关键字判失败
     - 出现连续多行仅由标点/空格组成的“诗歌体碎行”判失败
@@ -1524,8 +2456,11 @@ def validate_act3(script: str) -> bool:
     if not script:
         return False
 
-    # 1. 粗略长度控制：明显超长直接判失败
-    if len(script) > 1100:
+    # 1. 粗略长度控制：使用长篇第三幕目标，避免正常 1450~1850 字被旧阈值误报
+    act3_min, act3_max = MYTH_ACT_TARGETS["act3"]
+    if len(script) < max(900, act3_min - 350):
+        return False
+    if len(script) > act3_max + 450:
         return False
 
     # 2. 粗略繁体字检测（常见繁体字集合，命中任意一个就视为不合格）
@@ -1572,7 +2507,7 @@ def strip_beat_markers(text: str) -> str:
     return re.sub(r'【B\d+】\s*', '', text)
 
 
-def clean_story_postprocess(text: str) -> str:
+def clean_story_postprocess(text: str, myth_core: dict = None) -> str:
     """
     最终成稿的统一清洁：
     - 删除英文单词，避免 knot/back/shoulders 这类夹杂破坏时代感
@@ -1583,12 +2518,22 @@ def clean_story_postprocess(text: str) -> str:
     if not text:
         return text
 
+    text = remove_meta_residue(text)
+    text = normalize_language_pollution(text)
+    text = remove_body_drift_residue(text)
+    text = apply_myth_specific_postprocess(text, myth_core)
+
     # 删除连续英文字符（忽略大小写），直接抹掉英文单词
     text = re.sub(r'[A-Za-z]+', '', text)
+    text = re.sub(r'[\u0370-\u03FF\u0400-\u052F]+', '', text)
 
     # 删除常见的字数统计括号尾巴
     text = re.sub(r'（这段共[^）]*字）', '', text)
     text = re.sub(r'\(这段共[^)]*字\)', '', text)
+    text = re.sub(r'[（(](?:註|注|备注)[:：][^）)]{0,120}[）)]', '', text)
+    text = remove_meta_residue(text)
+    text = normalize_language_pollution(text)
+    text = remove_body_drift_residue(text)
 
     # 删掉中文字符之间误插入的空格
     text = re.sub(r'(?<=[\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])', '', text)
@@ -1596,10 +2541,14 @@ def clean_story_postprocess(text: str) -> str:
     # 再清理可能多出来的多余空格
     text = re.sub(r'[ ]{2,}', ' ', text)
     text = re.sub(r'\n{3,}', '\n\n', text)
+    text = split_long_paragraphs(text)
+    text = remove_meta_residue(text)
+    text = remove_body_drift_residue(text)
+    text = apply_myth_specific_postprocess(text, myth_core)
     return text.strip()
 
 
-def has_obvious_garbled_text(text: str) -> bool:
+def has_obvious_garbled_text(text: str, myth_core: dict = None) -> bool:
     """
     检测明显的乱码/跑偏/格式污染：
     - 常见未完成提示
@@ -1611,10 +2560,19 @@ def has_obvious_garbled_text(text: str) -> bool:
     if not text:
         return True
 
+    if has_hard_meta_residue(text):
+        return True
+
     if any(phrase in text for phrase in BAD_META_PHRASES):
         return True
 
+    if any(re.search(pattern, text) for pattern in META_RESIDUE_PATTERNS):
+        return True
+
     if re.search(r'[\U0001F300-\U0001FAFF]', text):
+        return True
+
+    if re.search(r'[\u0370-\u03FF\u0400-\u052F]', text):
         return True
 
     if re.search(r'[;；]{4,}|[.。]{5,}|[!！?？]{4,}', text):
@@ -1628,6 +2586,8 @@ def has_obvious_garbled_text(text: str) -> bool:
 
     meta_like_patterns = [
         r'（此处[^）]{0,30}插入[^）]*）',
+        r'（此时此刻[^）]{0,120}）',
+        r'（[^）]{0,30}(这段大约|多少字左右|接下来便是|下一节|备注|隐藏章节|待补)[^）]*）',
         r'（这段[^）]{0,30}符合要求[^）]*）',
         r'（[^）]{0,20}画面要素[^）]*）',
         r'（[^）]{0,20}感情线[^）]*）',
@@ -1635,6 +2595,9 @@ def has_obvious_garbled_text(text: str) -> bool:
         r'\([^)]{0,30}(插入|画面要素|感情线|推动主题)[^)]*\)',
     ]
     if any(re.search(pattern, text) for pattern in meta_like_patterns):
+        return True
+
+    if contains_body_drift(text, myth_core):
         return True
 
     latin_hits = re.findall(r'[A-Za-z]{2,}', text)
@@ -1663,10 +2626,68 @@ def has_obvious_garbled_text(text: str) -> bool:
     return False
 
 
-def validate_story_quality(text: str, prompt: str = "") -> bool:
+def has_repeated_story_units(text: str) -> bool:
+    """
+    检测明显的段落重启/同功能重复。重点拦截同一段落或高度相似段落
+    在成稿中反复出现的情况。
+    """
+    if not text:
+        return False
+    paragraphs = [
+        re.sub(r'\s+', '', p)
+        for p in re.split(r'\n+', text)
+        if len(re.sub(r'\s+', '', p)) >= 70
+    ]
+    seen = set()
+    for para in paragraphs:
+        key = para[:140]
+        if key in seen:
+            return True
+        seen.add(key)
+    for i, left in enumerate(paragraphs):
+        left_tokens = set(re.findall(r'[\u4e00-\u9fff]{2,4}', left))
+        if len(left_tokens) < 12:
+            continue
+        for right in paragraphs[i + 1:]:
+            right_tokens = set(re.findall(r'[\u4e00-\u9fff]{2,4}', right))
+            if len(right_tokens) < 12:
+                continue
+            overlap = len(left_tokens & right_tokens) / max(1, min(len(left_tokens), len(right_tokens)))
+            if overlap >= 0.78:
+                return True
+    return False
+
+
+def violates_myth_consistency(text: str, myth_core: dict = None) -> bool:
+    """
+    按神话核心约束检查名称和核心道具形态是否混乱。
+    规则由 myth_core_constraints*.json 提供，代码只提供通用执行器。
+    """
+    if not text or not myth_core:
+        return False
+    if contains_myth_core_violation(text, myth_core):
+        return True
+    canonical_terms = myth_core.get("canonical_terms", {})
+    if isinstance(canonical_terms, dict):
+        for _label, value in canonical_terms.items():
+            if isinstance(value, str) and value and value not in text:
+                return True
+    object_rules = myth_core.get("object_consistency", [])
+    if isinstance(object_rules, dict):
+        object_rules = [object_rules]
+    for rule in object_rules or []:
+        if not isinstance(rule, dict):
+            continue
+        allowed_forms = [form for form in rule.get("allowed_forms", []) if form]
+        if allowed_forms and not any(form in text for form in allowed_forms):
+            return True
+    return False
+
+
+def validate_story_quality(text: str, prompt: str = "", myth_core: dict = None) -> bool:
     """
     长篇神话改写的最终质量验收：
-    - 字数达到 6000~8000 的目标区间附近
+    - 字数达到 6500~8500 的目标区间附近，硬上限 9000
     - 无明显乱码/元文本污染
     - 句号逗号密度正常，不是单纯堆字
     - 与主题至少有若干关键字重合，降低跑题概率
@@ -1676,8 +2697,28 @@ def validate_story_quality(text: str, prompt: str = "") -> bool:
 
     if len(text) < MYTH_TARGET_TOTAL_MIN:
         return False
+    if len(text) > MYTH_TARGET_TOTAL_MAX:
+        return False
 
-    if has_obvious_garbled_text(text):
+    if has_obvious_garbled_text(text, myth_core):
+        return False
+
+    if violates_myth_consistency(text, myth_core or {}):
+        return False
+
+    if contains_body_drift(text, myth_core):
+        return False
+
+    if has_repeated_story_units(text):
+        return False
+
+    if myth_core and not myth_core_requirement_met(text, myth_core, final=True):
+        return False
+
+    if myth_core and not myth_core_final_phrases_met(text, myth_core):
+        return False
+
+    if myth_core and not myth_core_required_sequence_met(text, myth_core):
         return False
 
     punctuation_count = sum(text.count(p) for p in "，。！？")
@@ -1698,11 +2739,116 @@ def validate_story_quality(text: str, prompt: str = "") -> bool:
         return False
 
     # 单行过长过多，说明模型在拉长套话
-    ultra_long_lines = [line for line in non_empty_lines if len(line) >= 260]
-    if len(ultra_long_lines) >= max(4, len(non_empty_lines) // 5):
+    ultra_long_lines = [line for line in non_empty_lines if len(line) >= 360]
+    if ultra_long_lines:
         return False
 
     return True
+
+
+def shrink_story_to_target_length(text: str, prompt: str = "", myth_core: dict = None) -> str:
+    """
+    当正文超过目标上限时，调用模型做保守压缩，保留神话核心事件链和结尾。
+    """
+    if not text or len(text) <= MYTH_TARGET_TOTAL_SOFT_MAX:
+        return text
+
+    myth_core_block = format_myth_core_block(myth_core)
+    system_message = {
+        "role": "system",
+        "content": f"""
+你是一名长篇神话改写的精修编辑。你的任务是删减和压缩已有正文，不新增剧情。
+必须保留原神话核心事件链、关键因果、最终结局和核心寓意。
+目标长度：{MYTH_TARGET_TOTAL_MIN}~{MYTH_TARGET_TOTAL_SOFT_MAX} 字，绝对不要超过 {MYTH_TARGET_TOTAL_MAX} 字。
+压缩优先级：删重复环境描写、删重复推演过程、合并相似旁观反应、压缩连续互怼；保留强笑点、核心动作、关键情感收束。
+严禁保留或新增任何现代政治宣传腔、政策口号、党政国家叙述、人民群众总结、国际合作等与神话主线无关的内容。
+只输出压缩后的故事正文，不要标题、说明、列表或字数统计。
+{myth_core_block}
+"""
+    }
+    user_message = {
+        "role": "user",
+        "content": f"""请将以下《{prompt}》正文压缩到 {MYTH_TARGET_TOTAL_MIN}~{MYTH_TARGET_TOTAL_SOFT_MAX} 字之间，保留完整故事与结尾，不新增任何新情节。若原文出现现代政治宣传腔、政策口号、党政国家叙述、人民群众总结、国际合作等串台内容，必须整段删除：
+
+{text}"""
+    }
+    reply = call_qianwen_api(
+        [system_message, user_message],
+        temperature=0.55,
+        top_p=0.85,
+        repetition_penalty=1.25,
+        max_tokens=9000
+    )
+    cleaned = clean_story_postprocess(clean_markdown(reply or ""), myth_core)
+    if MYTH_TARGET_TOTAL_MIN <= len(cleaned) <= MYTH_TARGET_TOTAL_MAX and not contains_body_drift(cleaned, myth_core):
+        if not myth_core or myth_core_requirement_met(cleaned, myth_core, final=True):
+            return cleaned
+    return text
+
+
+def force_trim_story_to_hard_max(text: str, max_len: int = MYTH_TARGET_TOTAL_MAX) -> str:
+    """
+    压缩模型失败时的最后兜底：保留开头与结尾，删除中段最长的冗余段落。
+    只在超过硬上限时使用，避免再次输出 1w+ 字。
+    """
+    if not text or len(text) <= max_len:
+        return text
+    paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
+    if len(paragraphs) <= 6:
+        return text[:max_len].rstrip()
+
+    while len("\n\n".join(paragraphs)) > max_len and len(paragraphs) > 6:
+        removable = range(2, max(2, len(paragraphs) - 3))
+        candidates = list(removable)
+        if not candidates:
+            break
+        drop_index = max(candidates, key=lambda idx: len(paragraphs[idx]))
+        paragraphs.pop(drop_index)
+
+    trimmed = "\n\n".join(paragraphs).strip()
+    if len(trimmed) > max_len:
+        ending = "\n\n".join(paragraphs[-3:])
+        head_limit = max_len - len(ending) - 4
+        trimmed = (trimmed[:max(0, head_limit)].rstrip() + "\n\n" + ending).strip()
+    return trimmed
+
+
+def story_revision_is_better(candidate: str, current: str, prompt: str = "", myth_core: dict = None) -> bool:
+    """
+    判断补救生成是否值得覆盖当前正文。
+    生成模型偶尔会在“补救”阶段产出更短或更脏的稿子；这里防止越修越缩水。
+    """
+    if not candidate:
+        return False
+    if not current:
+        return True
+
+    candidate = clean_story_postprocess(candidate, myth_core)
+    current = clean_story_postprocess(current, myth_core)
+    candidate_valid = validate_story_quality(candidate, prompt, myth_core)
+    current_valid = validate_story_quality(current, prompt, myth_core)
+
+    if candidate_valid and not current_valid:
+        return True
+    if current_valid and not candidate_valid:
+        return False
+    if candidate_valid and current_valid:
+        target_mid = (MYTH_TARGET_TOTAL_MIN + MYTH_TARGET_TOTAL_SOFT_MAX) // 2
+        return abs(len(candidate) - target_mid) < abs(len(current) - target_mid)
+
+    candidate_dirty = has_obvious_garbled_text(candidate, myth_core) or violates_myth_consistency(candidate, myth_core or {})
+    current_dirty = has_obvious_garbled_text(current, myth_core) or violates_myth_consistency(current, myth_core or {})
+    if current_dirty and not candidate_dirty and len(candidate) >= max(MYTH_TARGET_TOTAL_MIN - 300, int(len(current) * 0.9)):
+        return True
+    if candidate_dirty and not current_dirty:
+        return False
+
+    if len(current) >= MYTH_TARGET_TOTAL_MIN and len(candidate) < MYTH_TARGET_TOTAL_MIN:
+        return False
+    if len(candidate) >= MYTH_TARGET_TOTAL_MIN and len(current) < MYTH_TARGET_TOTAL_MIN:
+        return True
+
+    return len(candidate) >= len(current) + 200
 
 
 def _extract_keywords(text: str) -> list:
@@ -1720,7 +2866,7 @@ def _extract_keywords(text: str) -> list:
     return keywords
 
 
-def validate_single_beat_segment(seg: str, beat: dict, min_len: int = 60) -> bool:
+def validate_single_beat_segment(seg: str, beat: dict, min_len: int = 60, myth_core: dict = None) -> bool:
     """
     针对【单张节拍卡】的轻量级校验：
     - 文本非空，且长度不能太短
@@ -1732,17 +2878,27 @@ def validate_single_beat_segment(seg: str, beat: dict, min_len: int = 60) -> boo
     seg = seg.strip()
     if len(seg) < min_len:
         return False
-    if has_obvious_garbled_text(seg):
+    if has_obvious_garbled_text(seg, myth_core):
+        return False
+    if contains_body_drift(seg, myth_core):
         return False
 
     visuals = _extract_keywords(beat.get('画面要素', '') or '')
     goals = _extract_keywords(beat.get('场景目标', '') or '')
     emotions = _extract_keywords(beat.get('情绪推动', '') or '')
+    info_keywords = _extract_keywords(beat.get('信息增量', '') or '')
 
     has_any_keywords = bool(visuals or goals or emotions)
     if has_any_keywords:
         hit = any(k in seg for k in visuals) or any(k in seg for k in goals) or any(k in seg for k in emotions)
         if not hit:
+            return False
+
+    if visuals and not any(k in seg for k in visuals):
+        return False
+
+    if goals or info_keywords:
+        if not any(k in seg for k in goals) and not any(k in seg for k in info_keywords):
             return False
 
     bans_raw = beat.get('禁止项', '') or ''
@@ -1776,11 +2932,12 @@ def generate_segment_for_beat(
     punchlines_to_embed: str = "",
     punchline_examples_text: str = "",
     touching_storyline: str = None,
-    touching_ending_examples: str = None  # 可选：已加载的感动结局示例，避免重复加载
+    touching_ending_examples: str = None,  # 可选：已加载的感动结局示例，避免重复加载
+    myth_core: dict = None
 ):
     """
     通用：按【单张节拍卡】生成对应的一小节正文，并做轻量校验，返回通过校验的文本（或最后一次结果）。
-    punchlines_to_embed：方案一第二阶段传入的、本小节必须融入的互怼对白（先由专门接口生成）。
+    punchlines_to_embed：方案一第二阶段传入的、本小节可融入的笑点方案（先由专门接口生成）。
     punchline_examples_text：方案二精选的「让人笑出来」对白示例，用于模仿节奏与梗的密度。
     """
     system_message = {
@@ -1794,8 +2951,9 @@ def generate_segment_for_beat(
         tail = prev_text.strip()[-400:]
         prev_summary = tail
 
-    punchline_block = ("【让人笑出来的对白示例（请模仿其节奏与梗的密度）】\n" + punchline_examples_text + "\n") if punchline_examples_text else ""
-    punchline_embed_block = ("【本小节必须自然融入的互怼对白（保持原意与笑点，可略改叙述衔接）】\n" + punchlines_to_embed + "\n") if punchlines_to_embed else ""
+    punchline_block = ("【当前神话适配的笑点对白示例（学习节奏，不要照抄）】\n" + punchline_examples_text + "\n") if punchline_examples_text else ""
+    punchline_embed_block = ("【本小节可优先吸收的笑点方案】\n" + punchlines_to_embed + "\n要求：只在贴合当前情境时自然融入；可改写人物称呼、道具和句子，不要生硬照搬。若方案里有情节反差，优先把它写成正文动作，不要强行改成副角吐槽。\n") if punchlines_to_embed else ""
+    myth_specific_humor_block = get_myth_specific_humor_guidance(myth_core)
     
     # 感动故事线索：根据当前幕和节拍卡位置，融入对应的感动线索
     touching_storyline_block = ""
@@ -1813,33 +2971,55 @@ def generate_segment_for_beat(
                 if touching_ending_examples is None:
                     touching_ending_examples = get_touching_ending_examples()
                 touching_examples_block = f"\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}\n" if touching_ending_examples else ""
-                touching_storyline_block = f"\n【感动故事线索（第三幕高潮与收束阶段，本小节是结局部分，必须重点突出感动元素，达到感动高潮）】\n{touching_storyline}\n{touching_examples_block}"
+                touching_storyline_block = f"\n【情绪收束线索（本小节是结局部分，优先回收幽默与人物弧光；若适合再轻微升华，不要硬煽情）】\n{touching_storyline}\n{touching_examples_block}"
             else:
                 # 第三幕的其他节拍卡，继续发展感动线索
                 touching_storyline_block = f"\n【感动故事线索（第三幕高潮与收束阶段，请在本小节中继续发展感动线索，为结局做准备）】\n{touching_storyline}\n"
 
     special_constraints = ""
     if act_id == "act2":
-        special_constraints = """
-【第二幕创世叙事约束】
-- 所有阻力必须来自世界结构、物理阻力或秩序规则，不能写成"有人在攻击主角"的战斗。
-- 禁止出现"对手""敌人""攻击者""反击""近战压制"等战斗叙事词汇。
-- 每个动作都要回答：这一步有没有让核心目标（如开天/补天/射日）往前推进？
+        myth_title = (myth_core or {}).get("title", "")
+        if myth_title == "北冥鲲鹏":
+            special_constraints = """
+【第二幕《北冥鲲鹏》核心转化约束】
+- 本幕必须把“鲲化为鹏”和“翼若垂天之云”写成清楚的主线进展，不得只写变大、长翅膀或受伤。
+- 变化描写只允许走宏大清逸方向：鳞化羽、背若泰山、翼若云垂、海水翻涌、风托其身；禁止写腐蚀液、陶罐酒樽、胸口异物、器官畸变、掉渣烂肉。
+- 若写旁观者或阿浪，必须短促；本幕后半要让其从嘲笑转为震惊，不能每段都插话。
+- 六月大风必须开始成为核心转折的预兆，不得写成普通东风、飓风或天气事故。
+"""
+        elif myth_title in {"嫦娥奔月", "牛郎织女", "梁山伯与祝英台", "孟姜女哭长城"}:
+            special_constraints = """
+【第二幕主线冲突约束】
+- 本幕允许人物压力、夺取、逼迫、追赶、误会或社会规矩形成冲突；但冲突必须直接服务本神话核心因果。
+- 若本神话涉及核心道具，必须保持道具状态单一清楚：藏在哪里、谁要夺取、谁如何处理、处理后产生什么不可逆后果。
+- 辅助吐槽角色不得主导冲突，不得把核心选择写成单纯闹剧、误触事故或聊天拌嘴。
+"""
+        else:
+            special_constraints = """
+【第二幕创世/英雄叙事约束】
+- 所有阻力必须来自世界结构、物理阻力、秩序规则或原神话固有危机，不能随意新造无关敌人。
+- 每个动作都要回答：这一步有没有让核心目标（如开天/补天/射日/渡海/填海）往前推进？
 【第二幕过程必须步骤化】
 - 若本神话为射日类：涉及射落太阳的节拍须写出具体动作与结果（如第几箭、射落第几颗、太阳如何坠下、旁人/环境反应），不得用「他一口气射落多个」一笔带过。
 - 若为开天/补天类：须写出本小节对应的具体阶段（如劈开某一处、撑住某一刻、补某一块），不能模糊成「持续进行」。
 """
     elif act_id == "act3":
-        special_constraints = """
+        if (myth_core or {}).get("title", "") == "北冥鲲鹏":
+            special_constraints = """
+【第三幕《北冥鲲鹏》远举收束约束】
+- 第三幕必须明确写出：鲲已不再是鲲，众生看见的是大鹏；鹏翼若垂天之云；它乘六月大风，背负青天，向南冥天池飞去。
+- “六月大风”必须是托举大鹏的天地之力，不是阻碍、事故或单纯灾害。
+- 结尾的主题不是打败谁，而是离开狭小尺度；下方嘲笑声要变小，阿浪如出现应沉默或低声认可。
+- 场景只沿“北冥海面/高空风口/南冥天池远方”推进，不要新增东海、码头、商船、昆仑雪峰等地点。
+- 结尾幽默最多一句嘴硬型余味，不得再密集吐槽。
+"""
+        else:
+            special_constraints = """
 【第三幕收束约束】
 - 必须围绕"选择与代价-世界后果-收束画面"这一结局三件套推进，不要开启新支线。
-- 【结局情感要求（重点）】：第三幕结局必须偏向感动，可以包含以下情感元素：
-  * 自我牺牲：主角为了完成使命，付出巨大代价（如身体消散、化作万物、耗尽力量等）
-  * 深情守护：主角对世界、对他人、对亲人的深情守护和付出
-  * 感人收束：通过环境变化、人物反应、情感升华等方式，营造感人的收束氛围
-  * 情感共鸣：通过副角/旁观者的反应、对话、动作等，增强情感共鸣
-- 保持整体牺牲感和庄重感，但允许在整幕范围内穿插1-2处贴合人物性格的轻描淡写式幽默，优先落在对白或内心独白里，用于缓和情绪，与前两幕的幽默基调形成呼应，绝不能削弱牺牲感和感动效果。
-- 结局部分（最后1-2张节拍卡）应重点突出感动元素，可以包含：主角的牺牲/付出、环境的改变、他人的反应、情感的升华等。
+- 【结局情绪要求（重点）】：第三幕优先保持幽默风趣和娱乐性，结尾可以是轻松余味、旁观者嘴硬认可、道具/口头禅回收，只有原神话自然适合时才做感动升华。
+- 不要强写牺牲、跪地、泪眼、奉献精神、时代曙光等作文式煽情；伏羲画卦、愚公移山等可用“众人终于看懂但仍嘴硬”的轻松方式收束。
+- 结局部分（最后1-2张节拍卡）应完成经典结局与主题闭环，同时保留1处克制但好笑的回收点。
 """
 
     user_content = f"""
@@ -1862,15 +3042,22 @@ def generate_segment_for_beat(
 - 禁止项：{beat.get('禁止项', '')}
 - 情感伏笔：{beat.get('情感伏笔', '')}
 - 关系推进：{beat.get('关系推进', '')}
+- 幽默机制：{beat.get('幽默机制', '')}
 {punchline_block}
 {punchline_embed_block}
+{myth_specific_humor_block}
 {touching_storyline_block}
 {special_constraints}
 
 【写作硬性要求】
 1. 只写本节对应的一小段剧情，不要提前写后续节拍的情节，也不要回头复述已经写过的内容。
+   - 如果前文已经写过某个道具被拿出、封存、启程、抵达、交手、吞服、离开等动作，本小节不得换个说法再写一遍；必须推进一个新的压力、新动作或新后果。
+   - 核心道具和人物称呼必须沿用前文与神话硬约束中的同一名称，不得把同一道具改写成另一种形态。
 2. 正文中必须自然出现上方"画面要素"中至少 1-2 个具体画面或动作（可以改写，不要生搬硬套短语）。
 3. 严格避免"禁止项"里的内容和表达，一旦要写到类似内容，必须换一种不违背规则的方式。
+3.1 只允许写当前节拍卡、本幕大纲、总体大纲里已经出现或可以直接推出的人物、地点、道具和事件。
+3.2 如果当前节拍卡没有写到某个新角色、新道具、新地点、新设定，就不要自行发明；尤其禁止突然出现预言者、会预知未来的动物、神秘帮手、临时外援、演播/直播类场景、信心值/任务值、系统/程序/工程类表达。
+3.3 新增内容只能是贴着主线的小幅补足，例如多一个动作细节、多一句互怼、多一点环境阻力、多一个旁观反应；不能把剧情拐到新的支线或新设定上。
 4. 幽默强度与通道要求：
    - 【第三幕后半段幽默退场机制】：如果 act_id == "act3" 且 beat_index >= total_beats - 1（最后1-2张节拍卡）：
      * 禁止"至少3个笑点"的要求
@@ -1879,40 +3066,59 @@ def generate_segment_for_beat(
      * 且这个轻句必须是"嘴硬型温柔"，不能是纯搞笑
      * 例如允许："你别磨蹭，我还听得见。"（嘴硬但温柔）
      * 不允许："师父你现在像条晾干的鱼。"（纯搞笑，会打断情绪沉浸）
-   - 【其他节拍卡】：本改写以幽默为先，宁可笑点明显也不要为文学性牺牲好笑：
+   - 【其他节拍卡】：本改写允许幽默，但幽默必须服务当前神话主线：
      * 强度：本小节笑点以【2级：明显好笑】为主（读者能明确感到「这里在搞笑」），可穿插【3级：小爆点】（一抛一接、误会升级、拆台接梗）。避免只有 1 级轻描淡写、读者无感的「软笑点」。
-     * 若当前节拍卡的"场景目标"属于铺垫、日常、情绪累积、尝试行动、寻找突破口、行动间隙等【非关键情节】：本小节【必须出现至少 3 个笑点】，其中【至少 2 个必须是对白笑点】（甲说—乙接，或互怼、拆台、调侃）；第三个可继续对白或旁白/动作反差。类型上须在本小节内用到【夸张、反差、错误逻辑、嘴硬、自嘲、拆台】中的至少 1 种，且鼓励多用对白呈现。
+     * 若当前节拍卡的"场景目标"属于铺垫、日常、情绪累积、尝试行动、寻找突破口、行动间隙等【非关键情节】：本小节可出现 1-2 个笑点，优先使用“情节/画面反差 + 一句短对白补刀”的组合。类型上可用【夸张、反差、错误逻辑、嘴硬、自嘲、拆台、旁观误解、道具翻车、严肃记录反差、命名梗】中的至少 1 种。
      * 若当前节拍卡的"场景目标"属于【关键转折/重大抉择/牺牲代价/终极使命完成/收束画面】：可只保留 0-1 个极克制的轻回应，不削弱庄重感。
-     * 幽默类型必须多样：夸张（夸张形容处境/能力）、反差（严肃场合说人话、大目标配小吐槽）、错误逻辑/歪楼（故意或无意把话题带偏、离谱但自洽的接话）、嘴硬、自嘲、拆台互怼。同一小节内避免只重复一种，尽量通过对白完成。
+     * 幽默类型必须多样：夸张（夸张形容处境/能力）、反差（严肃场合说人话、大目标配小吐槽）、错误逻辑/歪楼（故意或无意把话题带偏、离谱但自洽的接话）、嘴硬、自嘲、拆台互怼、旁观误解、道具翻车、严肃记录反差、命名梗。同一小节内避免只重复一种；不要把所有笑点都改写成固定副角对白。
      * 单次笑点 1-2 句话，允许【连续 2 句「一抛一接」】对白；严禁大段独白无接话。严禁现代职场/网络流行语、低俗/侮辱性桥段；**严禁骂人、辱骂、人身攻击等低俗幽默方式**，互怼仅限「逗、皮、嘴硬」，不得脏话或贬损人格。
-     * **固定拆台副角与互怼**：若本故事已设定【固定拆台副角】（如小徒弟阿狗、随从某某等有具体名字的角色），本小节须出现该副角与主角的**至少一轮互怼/拆台对白**（主角说—该副角接话拆台或吐槽），拆台要**干脆、有梗、一句到位**，追求「读者能笑出来」的效果；避免只有主角独白或与无名路人的零散对话。
-5. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，分 1-2 个自然段即可。
+     * **辅助吐槽角色与互怼**：若本故事已设定辅助吐槽角色，本小节只有在不挤压核心人物和主线冲突时才让其接话；关键冲突、重大抉择、牺牲、分离和收束节拍中，该角色应主动退场或沉默见证。连续两小节都由同一个辅助角色承担笑点时，本小节必须改用旁观误解、动作反差、道具翻车、记录反差或命名梗。
+5. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，必须分成 2-4 个短自然段；每段约 80-180 字，最长不要超过 240 字。场景动作、对白反应、情绪余波之间要自然换段，不要把所有内容连成一整段。
 6. 全文使用简体中文，不要出现列表、数字编号、说明文字、"节拍卡"字样或任何元提示。
 7. 语气、世界观、人物设定要与前文保持连续，像在同一个长篇故事里自然接着往下写。
 8. 只输出这一小节的【纯正文】，不要添加标题、小结或任何额外说明。
 """
 
-    user_message = {
-        "role": "user",
-        "content": user_content
-    }
+    def _build_user_message(extra_instruction: str = ""):
+        extra_block = f"\n【纠偏补充】\n{extra_instruction}\n" if extra_instruction else ""
+        return {
+            "role": "user",
+            "content": user_content + extra_block
+        }
 
-    def _call_and_postprocess(temp: float):
+    def _call_and_postprocess(temp: float, extra_instruction: str = ""):
+        token_budget = max(520, min(850, int(target_max_len * 1.35)))
         reply_local = call_qianwen_api(
-            [system_message, user_message],
+            [system_message, _build_user_message(extra_instruction)],
             temperature=temp,
             top_p=0.9,
             repetition_penalty=1.35,
-            max_tokens=1200
+            max_tokens=token_budget
         )
+        if has_hard_meta_residue(reply_local):
+            return ""
         cleaned = clean_markdown(reply_local)
         return fix_punctuation_and_paragraphs(cleaned)
 
     best_result = None
     for temp in (0.9, 0.8):
         seg = _call_and_postprocess(temp)
-        best_result = seg
-        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2)):
+        if seg and (best_result is None or len(seg) > len(best_result)):
+            best_result = seg
+        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2), myth_core=myth_core):
+            return seg.strip()
+
+    repair_instruction = (
+        "上一个版本没有严格贴住节拍卡。现在必须重写这一小节，只保留当前节拍卡和本幕大纲中已经出现的内容。"
+        "不要新增任何未被节拍卡明确允许的新角色、新地点、新道具、新支线。"
+        "禁止出现预言动物、神秘外援、演播厅、直播间、信心值、任务值、系统、程序、工程等跑偏设定。"
+        "这一小节必须直接完成当前“场景目标”，并自然落下“信息增量”，不能写成另一段新剧情。"
+    )
+    for temp in (0.75, 0.65):
+        seg = _call_and_postprocess(temp, repair_instruction)
+        if seg and (best_result is None or len(seg) > len(best_result)):
+            best_result = seg
+        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2), myth_core=myth_core):
             return seg.strip()
 
     # 多次尝试仍未通过节拍校验时，返回最后一次结果（尽量不阻塞整体流程）
@@ -2021,7 +3227,8 @@ def generate_act3_ending_beat(
     target_min_len: int,
     target_max_len: int,
     touching_ending_examples: str = None,
-    emotional_character: str = None  # 情感落点角色名称
+    emotional_character: str = None,  # 情感落点角色名称
+    myth_core: dict = None
 ):
     """
     专门用于生成第三幕结尾beat的函数
@@ -2046,10 +3253,10 @@ def generate_act3_ending_beat(
     touching_examples_block = f"\n【感动结局参考样本（请学习其情感表达与节奏）】\n{touching_ending_examples}\n" if touching_ending_examples else ""
     
     # 情感落点角色提示
-    emotional_character_block = f"\n【情感落点角色】\n本故事的情感落点角色是：{emotional_character}。第三幕结尾必须由该角色完成情感回应，群众/环境只能辅助，不能替代该角色。\n" if emotional_character else ""
+    emotional_character_block = f"\n【情感落点角色】\n本故事的情感落点角色是：{emotional_character}。第三幕结尾必须围绕该角色与核心主角的关系完成情感回应，群众/环境只能辅助，辅助吐槽角色不能替代该角色。\n" if emotional_character else ""
 
     user_content = f"""
-你正在创作《{prompt}》的{act_name}，现在要写本幕第 {beat_index}/{total_beats} 张节拍卡对应的一小节正文。这是【结尾beat】，必须达到感动高潮。
+你正在创作《{prompt}》的{act_name}，现在要写本幕第 {beat_index}/{total_beats} 张节拍卡对应的一小节正文。这是【结尾beat】，必须完成经典结局与情绪收束；优先保留幽默风趣的余味，若适合再自然升华，不要硬煽情。
 
 【总体大纲（仅供参考，用于把握全局走向）】
 {overall_outline}
@@ -2072,21 +3279,19 @@ def generate_act3_ending_beat(
 {emotional_character_block}
 
 【结尾beat硬性要求（必须全部满足）】
-1. 必须回收前文至少1个具体伏笔（如干粮、水壶、弓、手、那句口头禅等）
-2. 必须出现1个克制但明确的身体动作（如抱住、扶住、握住、轻拍等）
-3. 必须出现1个非解释性的环境收束镜头（如风、光、田野、万物、土地、天空、回暖、复苏等）
-4. 不允许再新增高密度互怼，最多只允许1个轻微缓冲句，且必须是"嘴硬型温柔"（如"你别磨蹭，我还听得见"），不能是纯搞笑
-5. 必须完成以下四件事中的至少三件：
-   - 主角代价显形（疲惫、血、裂、撑不住、消散、闭眼、放下、最后、终于等）
-   - 情感对象明确回应（抱住、扶住、轻声、看着、泪、沉默、点头、叫了一声等）
-   - 世界变化承接主角付出（风、光、田野、万物、土地、天空、回暖、复苏等）
-   - 留下带余韵的收束动作/意象（回收前文某个意象）
+1. 必须回收前文至少1个具体伏笔、误会、道具翻车或口头禅。
+2. 必须完成当前神话的经典结局，不得用泛泛总结替代。
+3. 必须出现1个非解释性的环境收束镜头（如风、光、田野、土地、天空、水面、火光等）。
+4. 允许保留1个轻松好笑的回收点，可以是嘴硬认可、旁观误会解除或小道具反差；不要再开新段子。
+5. 若神话本身不适合悲情结尾，不要强写跪地、泪眼、牺牲、奉献精神、时代曙光。
 
 【写作硬性要求】
 1. 只写本节对应的一小段剧情，不要提前写后续节拍的情节，也不要回头复述已经写过的内容。
+   - 如果前文已经写过某个道具被拿出、封存、启程、抵达、交手、吞服、离开等动作，本小节不得换个说法再写一遍；必须推进一个新的压力、新动作或新后果。
+   - 核心道具和人物称呼必须沿用前文与神话硬约束中的同一名称，不得把同一道具改写成另一种形态。
 2. 正文中必须自然出现上方"画面要素"中至少 1-2 个具体画面或动作。
 3. 严格避免"禁止项"里的内容和表达。
-4. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，分 1-2 个自然段即可。
+4. 本小节长度控制在约 {target_min_len}~{target_max_len} 字之间，必须分成 2-4 个短自然段；每段约 80-180 字，最长不要超过 240 字。动作、对白、环境收束之间要自然换段，不要把所有内容连成一整段。
 5. 全文使用简体中文，不要出现列表、数字编号、说明文字、"节拍卡"字样或任何元提示。
 6. 语气、世界观、人物设定要与前文保持连续，像在同一个长篇故事里自然接着往下写。
 7. 只输出这一小节的【纯正文】，不要添加标题、小结或任何额外说明。
@@ -2098,21 +3303,25 @@ def generate_act3_ending_beat(
     }
 
     def _call_and_postprocess(temp: float):
+        token_budget = max(500, min(800, int(target_max_len * 1.3)))
         reply_local = call_qianwen_api(
             [system_message, user_message],
             temperature=temp,
             top_p=0.9,
             repetition_penalty=1.35,
-            max_tokens=1200
+            max_tokens=token_budget
         )
+        if has_hard_meta_residue(reply_local):
+            return ""
         cleaned = clean_markdown(reply_local)
         return fix_punctuation_and_paragraphs(cleaned)
 
     best_result = None
     for temp in (0.9, 0.8):
         seg = _call_and_postprocess(temp)
-        best_result = seg
-        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2)):
+        if seg and (best_result is None or len(seg) > len(best_result)):
+            best_result = seg
+        if validate_single_beat_segment(seg, beat, min_len=max(40, target_min_len // 2), myth_core=myth_core):
             return seg.strip()
 
     return (best_result or "").strip()
@@ -2178,28 +3387,53 @@ def generate_myth_rewrite(prompt):
     """
     # Step 1: 生成总体大纲（使用RAG）
     print("正在生成总体大纲...")
+    myth_core = find_myth_core(prompt)
+    if myth_core:
+        print(f"已加载神话核心主旨约束：{myth_core.get('title', '')}")
+    else:
+        print("警告：未匹配到本篇神话核心主旨约束，将仅使用通用神话骨架规则。")
     rag_content = searchresult_content(prompt)
     overall_outline = ""
     for outline_try in range(3):
-        overall_outline = generate_outline(prompt, rag_content)
-        if overall_outline and len(overall_outline) >= 250 and not has_obvious_garbled_text(overall_outline):
+        overall_outline = generate_outline(prompt, rag_content, myth_core)
+        if (
+            overall_outline
+            and len(overall_outline) >= 250
+            and not has_obvious_garbled_text(overall_outline, myth_core)
+            and not contains_plan_drift(overall_outline, myth_core)
+            and myth_core_requirement_met(overall_outline, myth_core, final=False)
+        ):
             break
         print(f"警告：总体大纲质量不足，正在重试第 {outline_try + 2} 次...")
     print(f"总体大纲生成完成：\n{overall_outline}\n")
     
     # Step 2: 将总体大纲分配到三幕
     print("正在将总体大纲分配到三幕...")
-    acts_outline = split_outline_to_acts(overall_outline, prompt, rag_content)
-    if not outline_plan_is_usable(acts_outline):
+    acts_outline = split_outline_to_acts(overall_outline, prompt, rag_content, myth_core)
+    if not outline_plan_is_usable(acts_outline, myth_core):
         print("警告：首次分幕/节拍卡规划不足，正在使用更强提示重试...")
-        retry_prompt = prompt + "。请严格生成足量节拍卡，尤其第二幕必须给出10到12张节拍卡，禁止少于该数量。"
+        retry_prompt = (
+            prompt
+            + "。请严格生成足量且高质量的节拍卡：第一幕5到6张，第二幕8到9张，第三幕5到6张。"
+            + "禁止新增预言动物、神秘外援、演播厅、直播间、信心值、任务值、系统、程序、工程等跑偏设定。"
+            + "节拍卡只能贴着原神话主线和已有大纲扩写。"
+            + "必须严格遵守神话核心主旨约束，不得使用旧稿或相似样本里的错误主线。"
+        )
         for _ in range(2):
-            refreshed_outline = generate_outline(retry_prompt, rag_content)
-            if refreshed_outline and len(refreshed_outline) > len(overall_outline) // 2:
+            refreshed_outline = generate_outline(retry_prompt, rag_content, myth_core)
+            if (
+                refreshed_outline
+                and len(refreshed_outline) > len(overall_outline) // 2
+                and not contains_plan_drift(refreshed_outline, myth_core)
+                and myth_core_requirement_met(refreshed_outline, myth_core, final=False)
+            ):
                 overall_outline = refreshed_outline
-            acts_outline = split_outline_to_acts(overall_outline, retry_prompt, rag_content)
-            if outline_plan_is_usable(acts_outline):
+            acts_outline = split_outline_to_acts(overall_outline, retry_prompt, rag_content, myth_core)
+            if outline_plan_is_usable(acts_outline, myth_core):
                 break
+        if not outline_plan_is_usable(acts_outline, myth_core) and myth_core:
+            print("警告：模型分幕/节拍卡仍不可用，已按神话核心事件链生成兜底规划。")
+            acts_outline = build_core_fallback_plan(prompt, myth_core)
     print(f"第一幕大纲：\n{acts_outline['act1']}\n")
     print(f"第二幕大纲：\n{acts_outline['act2']}\n")
     print(f"第三幕大纲：\n{acts_outline['act3']}\n")
@@ -2216,6 +3450,7 @@ def generate_myth_rewrite(prompt):
                 print(f"    情绪推动：{beat.get('情绪推动', '')}")
                 print(f"    信息增量：{beat.get('信息增量', '')}")
                 print(f"    禁止项：{beat.get('禁止项', '')}")
+                print(f"    幽默机制：{beat.get('幽默机制', '')}")
             else:
                 print(f"  节拍卡{i}：{beat}")
     if acts_outline.get('act2_beats'):
@@ -2228,6 +3463,7 @@ def generate_myth_rewrite(prompt):
                 print(f"    情绪推动：{beat.get('情绪推动', '')}")
                 print(f"    信息增量：{beat.get('信息增量', '')}")
                 print(f"    禁止项：{beat.get('禁止项', '')}")
+                print(f"    幽默机制：{beat.get('幽默机制', '')}")
             else:
                 print(f"  节拍卡{i}：{beat}")
     if acts_outline.get('act3_beats'):
@@ -2240,6 +3476,7 @@ def generate_myth_rewrite(prompt):
                 print(f"    情绪推动：{beat.get('情绪推动', '')}")
                 print(f"    信息增量：{beat.get('信息增量', '')}")
                 print(f"    禁止项：{beat.get('禁止项', '')}")
+                print(f"    幽默机制：{beat.get('幽默机制', '')}")
             else:
                 print(f"  节拍卡{i}：{beat}")
     print("=== 节拍卡日志结束 ===\n")
@@ -2252,7 +3489,8 @@ def generate_myth_rewrite(prompt):
         acts_outline['act2'],
         acts_outline['act3'],
         prompt,
-        rag_content
+        rag_content,
+        myth_core=myth_core
     )
     print(f"感动故事线索生成完成：")
     print(f"  第一幕感动线索：{touching_storyline['act1_touching']}")
@@ -2267,7 +3505,8 @@ def generate_myth_rewrite(prompt):
         rag_content,
         prompt,
         acts_outline.get('act1_beats'),
-        touching_storyline=touching_storyline['act1_touching']
+        touching_storyline=touching_storyline['act1_touching'],
+        myth_core=myth_core
     )
     print(f"第一幕生成完成（{len(act1)}字）\n")
     
@@ -2279,25 +3518,36 @@ def generate_myth_rewrite(prompt):
         act1,
         prompt,
         acts_outline.get('act2_beats'),
-        touching_storyline=touching_storyline['act2_touching']
+        touching_storyline=touching_storyline['act2_touching'],
+        myth_core=myth_core
     )
     print(f"第二幕生成完成（{len(act2)}字）\n")
     
     # Step 6: 提取情感落点角色（固定拆台副角）
     emotional_character = None
-    # 尝试从节拍卡或大纲中提取固定拆台副角名称
-    for act_beats in [acts_outline.get('act1_beats', []), acts_outline.get('act2_beats', []), acts_outline.get('act3_beats', [])]:
-        for beat in act_beats:
-            if isinstance(beat, dict):
-                relationship = beat.get('关系推进', '')
-                # 简单提取：寻找常见的副角名称模式
-                import re
-                match = re.search(r'(铁牛|小徒弟|阿狗|随从|徒弟|副角)', relationship)
-                if match:
-                    emotional_character = match.group(1)
-                    break
-        if emotional_character:
-            break
+    core_emotional_roles = {
+        "嫦娥奔月": "后羿",
+        "牛郎织女": "牛郎与织女",
+        "梁山伯与祝英台": "梁山伯与祝英台",
+        "孟姜女哭长城": "孟姜女",
+    }
+    if myth_core:
+        emotional_character = core_emotional_roles.get(myth_core.get("title"))
+
+    # 没有明确核心情感角色时，再尝试从节拍卡或大纲中提取必要辅助角色名称
+    if not emotional_character:
+        for act_beats in [acts_outline.get('act1_beats', []), acts_outline.get('act2_beats', []), acts_outline.get('act3_beats', [])]:
+            for beat in act_beats:
+                if isinstance(beat, dict):
+                    relationship = beat.get('关系推进', '')
+                    # 简单提取：寻找常见的副角名称模式
+                    import re
+                    match = re.search(r'(铁牛|小徒弟|阿狗|随从|徒弟|副角)', relationship)
+                    if match:
+                        emotional_character = match.group(1)
+                        break
+            if emotional_character:
+                break
     
     # Step 7: 生成第三幕（使用第三幕大纲和第二幕作为上下文，融入第三幕感动线索）
     print("正在生成第三幕...")
@@ -2308,50 +3558,73 @@ def generate_myth_rewrite(prompt):
         prompt,
         acts_outline.get('act3_beats'),
         touching_storyline=touching_storyline['act3_touching'],
-        emotional_character=emotional_character
+        emotional_character=emotional_character,
+        myth_core=myth_core
     )
     print(f"第三幕生成完成（{len(act3)}字）\n")
     
     # Step 8: 拼接三幕
     final_script = act1 + "\n\n" + act2 + "\n\n" + act3
-    final_script = clean_story_postprocess(final_script)
+    final_script = clean_story_postprocess(final_script, myth_core)
     
     # Step 9: 验证整体质量，若总长不足或结尾质量不好，则重写第三幕补足尾段与收束
-    if not validate_story_quality(final_script, prompt):
+    if not validate_story_quality(final_script, prompt, myth_core):
         print("警告：长篇脚本整体质量未达标，正在重新生成第三幕以补足长度与收束...")
-        act3 = generate_act3(
+        revised_act3 = generate_act3(
             acts_outline['act3'],
             overall_outline,
             act2,
             prompt,
             acts_outline.get('act3_beats'),
             touching_storyline=touching_storyline['act3_touching'],
-            emotional_character=emotional_character
+            emotional_character=emotional_character,
+            myth_core=myth_core
         )
-        final_script = act1 + "\n\n" + act2 + "\n\n" + act3
-        final_script = clean_story_postprocess(final_script)
+        revised_script = clean_story_postprocess(act1 + "\n\n" + act2 + "\n\n" + revised_act3, myth_core)
+        if story_revision_is_better(revised_script, final_script, prompt, myth_core):
+            act3 = revised_act3
+            final_script = revised_script
+        else:
+            print("警告：重写第三幕没有改善整体质量或导致明显缩水，保留上一版第三幕。")
 
     # Step 10: 仍然过短时，放大第二幕重写一次，优先补充动作过程和功能性场景
     if len(final_script) < MYTH_TARGET_TOTAL_MIN:
         print("警告：总字数仍不足，正在扩写第二幕...")
-        act2 = generate_act2(
+        revised_act2 = generate_act2(
             acts_outline['act2'],
             overall_outline,
             act1,
             prompt + "。请进一步写满核心行动过程，增加与主线强相关的动作分解、环境阻力、阶段性尝试、同伴互怼与情绪递进，但不要跑题。",
             acts_outline.get('act2_beats'),
-            touching_storyline=touching_storyline['act2_touching']
+            touching_storyline=touching_storyline['act2_touching'],
+            myth_core=myth_core
         )
-        act3 = generate_act3(
+        revised_act3 = generate_act3(
             acts_outline['act3'],
             overall_outline,
-            act2,
+            revised_act2,
             prompt,
             acts_outline.get('act3_beats'),
             touching_storyline=touching_storyline['act3_touching'],
-            emotional_character=emotional_character
+            emotional_character=emotional_character,
+            myth_core=myth_core
         )
-    final_script = clean_story_postprocess(act1 + "\n\n" + act2 + "\n\n" + act3)
+        revised_script = clean_story_postprocess(act1 + "\n\n" + revised_act2 + "\n\n" + revised_act3, myth_core)
+        if story_revision_is_better(revised_script, final_script, prompt, myth_core):
+            act2 = revised_act2
+            act3 = revised_act3
+            final_script = revised_script
+        else:
+            print("警告：扩写第二幕/第三幕没有改善整体质量或导致明显缩水，保留上一版正文。")
+    final_script = clean_story_postprocess(act1 + "\n\n" + act2 + "\n\n" + act3, myth_core)
+    if len(final_script) > MYTH_TARGET_TOTAL_SOFT_MAX:
+        print("警告：总字数超过上限，正在压缩到目标区间...")
+        final_script = shrink_story_to_target_length(final_script, prompt, myth_core)
+    if len(final_script) > MYTH_TARGET_TOTAL_MAX:
+        print("警告：压缩后仍超过硬上限，正在执行保底裁剪...")
+        final_script = force_trim_story_to_hard_max(final_script, MYTH_TARGET_TOTAL_MAX)
+    if not validate_story_quality(final_script, prompt, myth_core):
+        print("警告：最终脚本仍未通过神话核心主旨/污染检测，请查看调试日志后重新生成。")
     
     print(f"最终脚本总字数：{len(final_script)}字")
     return final_script
@@ -2455,17 +3728,17 @@ def generate_myth_rewrite(prompt):
             - 对话要有动作配合：每次说话都要有相应的动作、表情、语气描写；
             - 对话可以推进剧情：通过对话或内心独白来推进剧情，而不是只通过动作。
             - 【功能型副角与对白职责分工（从样本抽象出的通用硬规则，必须执行）】：
-              - 整篇故事中，除主角外，**至少需要3个有具体名字的功能型副角**，每个副角在绝大多数节拍中都要反复出现，形成稳定的小队结构，不能只说一两句就消失。
+              - 整篇故事中，除主角外，默认最多一名有具体名字的功能型辅助角色；若原神话已有反派、夫妻、亲子、师徒等核心关系，则优先写核心人物，辅助角色不必反复出现。
               - 每个副角必须绑定1-2个明确的【功能标签】，常见功能包括但不限于：
                 * 【推动情节位】：负责提出任务、制造阻力或给出关键决策信息（例如催促快走、指出时间/资源紧张、当场提出"射日/补天/出征"之类的行动建议）。
                 * 【背景/原因说明位】：负责在对话中解释"现在为什么这么危险""天规/咒罚/灾难的来源是什么""如果不做会怎样"，但必须通过提问-回答、争论或补充式对白说出，不得一口气长篇讲解。
                 * 【幽默缓冲位（拆台嘴碎）】：负责用生活化的吐槽、误解、互怼来缓和气氛，可以顺带抛出现实难题（吃什么、住哪儿、水不够等），但每句吐槽都要与当前处境或决定相关，禁止纯无关段子。
               - 同一轮对白中，**单个副角每次发言只承担一个主要功能**（要么推情节、要么解释背景、要么搞笑缓冲），不要一人连着三句把信息、笑点、决策全部说完；这些职责要在多轮对白中由不同角色接力完成。
-              - 在任何一个节拍卡对应的小节里，**不得出现"所有副角全部沉默，由主角一人解释完背景+做完决定"的情况**：
+              - 在需要说明背景或压力的小节里，可以通过核心人物或必要辅助角色接话补足信息；不要为了对白密度让所有副角轮流抢话：
                 * 背景/原因信息，优先由【背景说明位】副角先说出；
                 * 时间压力、资源短缺、行动提议，优先由【推动情节位】副角抛出；
                 * 情绪减压和轻微反讽，优先由【幽默缓冲位】副角承担。
-              - 每个节拍的小节中，应尽量形成类似如下的多角色对白结构（可类比【后羿+徒弟+巫者+日灵】示范，但不得照抄其台词）：
+              - 非关键小节可形成类似如下的简短对白结构（可类比【主角+必要辅助角色】示范，但不得照抄其台词）：
                 1）主角先用一句较为庄重或略微嘴硬的台词点出当前困境或任务；
                 2）幽默缓冲位副角立刻拆台或歪楼（围绕吃穿住行等具体问题），制造第一个笑点；
                 3）背景说明位副角顺势接话，把"为什么不能拖""不做会怎样"这类核心信息补全；
