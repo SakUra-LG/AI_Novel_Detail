@@ -45,6 +45,7 @@ MYTH_ACT_TARGETS = {
 }
 MYTH_CORE_CONSTRAINTS_FILENAME = 'myth_core_constraints_revised.json'
 MYTH_CORE_CONSTRAINTS_FALLBACK_FILENAME = 'myth_core_constraints.json'
+MYTH_THREAD_PROTAGONIST_FILENAME = 'myth_thread_protagonist_constraints.json'
 
 BAD_META_PHRASES = [
     "[因原文长度限制未能全部提供]",
@@ -154,6 +155,7 @@ BODY_DRIFT_PATTERNS = [
 ]
 
 MYTH_CORE_CONSTRAINTS_CACHE = None
+MYTH_THREAD_PROTAGONIST_CACHE = None
 
 TRADITIONAL_TO_SIMPLIFIED = str.maketrans({
     "負": "负", "責": "责", "連": "连", "劍": "剑", "飛": "飞", "昇": "升",
@@ -194,6 +196,11 @@ TRADITIONAL_TO_SIMPLIFIED.update(str.maketrans({
     "歸": "归", "點": "点", "淚": "泪", "復": "复", "蘇": "苏", "餘": "余",
     "雜": "杂", "塵": "尘", "彎": "弯", "斷": "断", "穩": "稳", "擺": "摆",
     "驚": "惊", "嘯": "啸", "濤": "涛", "滾": "滚", "濕": "湿", "滿": "满",
+    "間": "间", "帶": "带", "鮮": "鲜", "撲": "扑", "歡": "欢", "進": "进",
+    "戲": "戏", "著": "着", "鬆": "松", "熱": "热", "講": "讲", "簡": "简",
+    "誤": "误", "確": "确", "圍": "围", "極": "极", "標": "标", "並": "并",
+    "懼": "惧", "險": "险", "關": "关", "曬": "晒", "邁": "迈", "節": "节",
+    "躍": "跃", "慌": "慌", "蹤": "踪", "舊": "旧", "隨": "随", "區": "区",
 }))
 
 META_RESIDUE_PATTERNS = [
@@ -264,6 +271,48 @@ def load_myth_core_constraints() -> dict:
     return MYTH_CORE_CONSTRAINTS_CACHE
 
 
+def load_thread_protagonist_constraints() -> dict:
+    """
+    加载十八篇神话的贯穿主人公约束。
+    该文件只提供串线人物的出场功能和禁区，不覆盖原神话核心事件链。
+    """
+    global MYTH_THREAD_PROTAGONIST_CACHE
+    if MYTH_THREAD_PROTAGONIST_CACHE is not None:
+        return MYTH_THREAD_PROTAGONIST_CACHE
+
+    path = _knowledge_base_path(MYTH_THREAD_PROTAGONIST_FILENAME)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        protagonist = data.get("protagonist", {})
+        stories = []
+        for story in data.get("stories", []):
+            story_copy = dict(story)
+            story_copy["_protagonist"] = protagonist
+            stories.append(story_copy)
+        MYTH_THREAD_PROTAGONIST_CACHE = {
+            "protagonist": protagonist,
+            "stories": stories,
+            "by_title": {story.get("title", ""): story for story in stories if story.get("title")},
+            "source_file": os.path.basename(path),
+        }
+        return MYTH_THREAD_PROTAGONIST_CACHE
+    except FileNotFoundError:
+        print(f"警告：未找到 {MYTH_THREAD_PROTAGONIST_FILENAME}，串线主人公约束不会生效。")
+    except Exception as e:
+        print(f"加载串线主人公约束时出错: {e}")
+
+    MYTH_THREAD_PROTAGONIST_CACHE = {"protagonist": {}, "stories": [], "by_title": {}}
+    return MYTH_THREAD_PROTAGONIST_CACHE
+
+
+def find_thread_protagonist_constraint(story_title: str) -> dict:
+    if not story_title:
+        return {}
+    data = load_thread_protagonist_constraints()
+    return data.get("by_title", {}).get(story_title, {})
+
+
 def find_myth_core(prompt: str) -> dict:
     """
     根据用户提示词匹配当前要改写的神话。
@@ -275,8 +324,47 @@ def find_myth_core(prompt: str) -> dict:
     for story in data.get("stories", []):
         names = [story.get("title", "")] + story.get("aliases", [])
         if any(name and name in prompt for name in names):
-            return story
+            story_copy = dict(story)
+            thread_constraint = find_thread_protagonist_constraint(story_copy.get("title", ""))
+            if thread_constraint:
+                story_copy["_thread_protagonist"] = thread_constraint
+            return story_copy
     return {}
+
+
+def format_thread_protagonist_block(thread_constraint: dict) -> str:
+    if not thread_constraint:
+        return ""
+
+    protagonist = thread_constraint.get("_protagonist", {})
+    name = protagonist.get("name", "串线主人公")
+
+    def _lines(label, values):
+        if not values:
+            return ""
+        return label + "\n" + "\n".join(f"- {item}" for item in values)
+
+    parts = [
+        "【贯穿十八篇的串线主人公硬约束（优先级高于RAG样本和临场发挥）】",
+        f"串线主人公：{name}",
+        f"固定身份：{protagonist.get('full_identity', '')}",
+        f"十八篇体系功能：{protagonist.get('series_purpose', '')}",
+        _lines("固定性格：", protagonist.get("personality", [])),
+        f"总规则：{protagonist.get('core_rule', '')}",
+        _lines("固定道具：", protagonist.get("fixed_props", [])),
+        _lines("体系必含短语：", protagonist.get("global_required_phrases", [])),
+        _lines("可用于跨篇连接的神话词：", protagonist.get("continuity_terms", [])),
+        _lines("十八篇体系串联规则：", protagonist.get("continuity_rules", [])),
+        _lines("全局必须遵守：", protagonist.get("global_must", [])),
+        _lines("全局禁止：", protagonist.get("global_forbidden", [])),
+        f"本篇出场功能：{thread_constraint.get('role', '')}",
+        _lines("本篇必须写出的动作/话语/态度：", thread_constraint.get("must_do", [])),
+        _lines("本篇推荐使用的跨篇连接/旧经历回忆梗（至少自然使用其中一类或自拟同等级跨篇连接）：", thread_constraint.get("callback_options", [])),
+        _lines("本篇串线主人公禁区：", thread_constraint.get("forbidden", [])),
+        _lines("成稿中至少命中的串线短语：", thread_constraint.get("required_phrases", [])),
+        "写作要求：阿满必须自然嵌入当前神话主线，提供幽默、记录和见证；同时必须把当前神话放入《山海十八简》的十八篇体系里，至少用一处短促跨篇回忆、类比或伏笔连接其他神话。但当前神话原主角必须亲自完成核心行动，阿满不得抢走主线或改变结局。",
+    ]
+    return "\n".join(part for part in parts if part)
 
 
 def format_myth_core_block(myth_core: dict) -> str:
@@ -337,6 +425,7 @@ def format_myth_core_block(myth_core: dict) -> str:
             line += f"；禁止写成 {forbidden}"
         object_rule_lines.append(line)
     object_rule_block = "核心道具一致性：\n" + "\n".join(object_rule_lines) if object_rule_lines else ""
+    thread_protagonist_block = format_thread_protagonist_block(myth_core.get("_thread_protagonist", {}))
 
     parts = [
         "【本篇神话主题主旨硬约束（优先级高于RAG样本和幽默扩写）】",
@@ -351,6 +440,7 @@ def format_myth_core_block(myth_core: dict) -> str:
         canonical_block,
         forbidden_alias_block,
         object_rule_block,
+        thread_protagonist_block,
         required_actions_block,
         f"扩写边界：{myth_core.get('expansion_guidance', '')}",
         global_guard_block,
@@ -403,6 +493,89 @@ def build_core_fallback_plan(prompt: str, myth_core: dict) -> dict:
     def _outline(events, role):
         joined = "；".join(events)
         return f"{title}{role}必须围绕核心事件推进：{joined}。所有扩展只补足人物动机、道具状态、压力来源、动作过程、情绪变化和贴着主线的笑点。幽默不能只靠辅助角色互怼，必须让试错过程、旁观误解、道具状态、记录/命名反差共同制造笑点；辅助角色只能见证、短促拆台或轻微翻车，不能替代主角完成核心选择。"
+
+    if title == "后羿射日":
+        def _beat(goal, visual, emotion, info, ban, humor, foreshadow="阿满的青竹简从怕被晒坏，到最后郑重写下“射九留一”", relation="阿满只记录、吐槽和见证；后羿始终亲自完成射日与留一日的选择"):
+            return {
+                "场景目标": goal,
+                "画面要素": visual,
+                "情绪推动": emotion,
+                "信息增量": info,
+                "禁止项": ban,
+                "情感伏笔": foreshadow,
+                "关系推进": relation,
+                "幽默机制": humor,
+            }
+
+        act1_beats = [
+            _beat(
+                "建立十日并出的灾情与阿满到场记录",
+                "十个太阳同时压在天上；阿满抱着青竹简用袖子给竹简遮阳",
+                "狼狈→清醒",
+                "明确灾因是十日并出，大地焦灼，阿满只是来记录灾情",
+                "不得提前射日；不得写战斗、敌人、神秘外援；不得出现现代时间和现代道具",
+                "记录反差：阿满认真写灾情，字刚落下就差点被晒得翘边",
+            ),
+            _beat(
+                "展示百姓受难与求救压力",
+                "干裂井口、空陶罐、蔫倒的庄稼；百姓围向后羿求救",
+                "清醒→焦急",
+                "新增百姓为何非后羿不可，不重复十日景象",
+                "不得写成普通围观热闹；不得让阿满替百姓做决定",
+                "旁观误解：村民把阿满的青竹简当遮阳板借用",
+            ),
+            _beat(
+                "后羿确认救民目标与弓箭状态",
+                "后羿检查弓弦、箭羽和箭袋；阿满躲在弓影下记“弓还能用”",
+                "焦急→决断",
+                "明确核心道具是弓和箭，后羿决定亲自救民",
+                "不得新增护身符、匕首、酒葫芦水源奇迹等无关道具；不得让小徒弟抢戏",
+                "道具反差：阿满以为弓影能乘凉，风一吹影子先跑了",
+            ),
+            _beat(
+                "登高前的短暂筹备与阿满随行",
+                "后羿背箭上山；阿满一手护青竹简一手追脚步",
+                "决断→吃力",
+                "新增登高原因：站上高处才能面对十日",
+                "不得在山下直接开射；不得重复百姓求救",
+                "动作反差：后羿登高如走平地，阿满把每一级石阶都记成劫难",
+            ),
+            _beat(
+                "抵达山顶并直面十日",
+                "山顶热浪扭曲；十日分布在天幕，后羿辨认射击顺序",
+                "吃力→凝神",
+                "明确下一幕要按顺序射落九日，并留下一个太阳",
+                "不得一口气写完射日；不得让太阳躲云层玩捉迷藏",
+                "嘴硬自嘲：阿满说若写错顺序，青竹简先替他中暑",
+            ),
+        ]
+        act2_beats = [
+            _beat("后羿开弓射落第一个太阳", "后羿站稳、搭箭、拉满弓；第一个太阳中箭坠落，热浪退一层", "凝神→震动", "必须明确第一箭射落第一日", "不得跳到第七日；不得写第一箭失败；不得让阿满影响命中", "一抛一接：阿满刚写“第一箭很稳”，汗滴把“稳”洇成“烫”"),
+            _beat("射落第二个太阳并稳定众人信心", "第二箭穿过刺目白光；百姓从恐惧转为敢抬头", "震动→振奋", "必须明确第二箭射落第二日，世界略有变化", "不得把多个太阳模糊写成陆续消失；不得新增怪物或逃跑太阳", "旁观误解：老人以为天上少了一个火炉，问能不能先搬去做饭"),
+            _beat("射落第三个太阳，后羿开始显露体力代价", "第三箭离弦；后羿虎口渗血，肩背被热浪压住", "振奋→咬牙", "新增后羿救民要付出体力和伤痛", "不得写阿满替后羿递神箭；不得写护身符帮助射击", "嘴硬自嘲：后羿说手还没废，阿满记成“暂时没废”"),
+            _beat("连续射落第四到第六个太阳，但每一箭都要有动作和结果", "第四箭压低火云、第五箭穿过热浪、第六箭震落焦灰；地面裂缝不再冒烟", "咬牙→稳住", "必须明确第四、第五、第六日被射落，不得一句带过", "不得出现顺序倒退；不得把第五个太阳写成逃走又重来", "记录反差：阿满写到第六个时开始给箭数打结，嘴上还硬说自己很清醒"),
+            _beat("面对剩下四日，后羿调整呼吸和射击节奏", "后羿放低弓臂喘息；阿满护住青竹简提醒已射落六日", "稳住→再决断", "承接前六日已落，只为后三箭蓄势", "不得重写第一箭；不得开启无关村民偷蓑衣、蚂蚁搬叶等支线", "短对白拆台：阿满提醒“还有三个要射，一个要留”，自己差点把留字写成溜"),
+            _beat("射落第七个太阳", "第七箭擦过滚烫云边；第七日坠落时热风反扑", "再决断→吃痛", "必须明确第七日被射落，并写出反扑压力", "不得把第七日写成开篇；不得写第十日先动", "动作反差：阿满被反扑热风吹得后退，仍先检查青竹简有没有少一页"),
+            _beat("射落第八个太阳", "后羿换步、压肩、拉弦；第八日坠落后天空露出缝隙", "吃痛→逼近终点", "必须明确第八日被射落，剩下两个太阳", "不得让第八日躲藏成新支线；不得引入新法宝", "旁观误解：孩童数天上火球数到打嗝，阿满严肃纠正又把自己数乱"),
+            _beat("射落第九个太阳，留下最后抉择", "第九箭最沉；第九日落下后只剩最后一个太阳悬在天上", "逼近终点→沉静", "必须明确射落九日已经完成，转入是否射最后一日的选择", "不得把十日全灭；不得说太阳全部消失；不得在此结束全篇", "记录反差：阿满准备写“完工”，看见最后一个太阳又把字划掉"),
+            _beat("第二幕收束：后羿压下最后一箭，没有立刻射出", "后羿箭尖对准最后一日又缓缓放下；百姓屏息等待", "沉静→克制", "明确第三幕主题是留下一日的克制，不是继续战斗", "不得射掉最后一个太阳；不得让阿满劝他射或替他决定", "嘴硬余味：阿满小声问这算不算“最难的一箭是没射出去”"),
+        ]
+        act3_beats = [
+            _beat("建立留下最后一个太阳的争议", "百姓有人害怕最后一日继续炙烤；后羿看见远处仍需光照的土地", "克制→承压", "解释为什么不能射掉最后一个太阳", "不得写成漏靶；不得让村民以为任务失败作为主线", "旁观误解：有人问是不是少带一支箭，阿满捂着青竹简不敢笑太大声"),
+            _beat("后羿明确作出留一日的选择", "后羿收弓，箭尖离开最后太阳；阿满准备郑重记录", "承压→坚定", "必须明确后羿主动留下最后一日，不是射不中或太阳逃走", "不得再开射；不得让阿满或百姓替他决定", "记录反差：阿满写“留下一日”，写完才发现这四个字比射九日还难"),
+            _beat("天地温度回落，灾情开始缓解", "热风变凉、井口返潮、田埂冒出湿气；百姓从躲藏中出来", "坚定→松弛", "展示天地恢复正常的可感后果", "不得突然出现雷电、火灾或新灾难；不得用泛泛总结代替画面", "动作反差：阿满试探青竹简不再烫手，像试药一样谨慎"),
+            _beat("百姓反应与后羿疲惫收束", "百姓感谢后羿；后羿手臂发抖仍站稳", "松弛→敬重", "新增后羿付出代价，但不写死亡或复活", "不得硬煽情长篇总结；不得开启妻子支线", "短促幽默：后羿说先别谢，谁有水先借一口"),
+            _beat("阿满写下射九留一，完成串线主人公功能", "阿满摊开青竹简，郑重写下“后羿射落九日，留下一日”；汗印留在竹简边缘", "敬重→余韵", "必须命中阿满、青竹简、射九留一或射落九日留下一日", "不得把阿满写成主角；不得让阿满发表大道理", "记录梗回收：阿满说这回终于不是青竹简被晒熟，而是自己差点熟了"),
+            _beat("结尾：一日照常升起，世界恢复秩序", "唯一的太阳温和照着土地；孩子在溪边笑，庄稼舒展叶片", "余韵→安定", "明确后羿射日故事讲完：十日之灾结束，天地恢复秩序", "不得出现未完待续；不得新增下一篇神话主线", "嘴硬型余味：阿满看着太阳，先摸竹简温度再敢落最后一笔"),
+        ]
+        return {
+            "act1": _outline(["十日并出", "大地焦灼百姓受难", "后羿决定救民", "阿满到场记录"], "第一幕"),
+            "act2": _outline(["后羿登高面对十日", "按顺序射落第一至第九个太阳", "留下最后一日的选择被推到眼前"], "第二幕"),
+            "act3": _outline(["后羿主动留下最后一个太阳", "天地恢复正常", "阿满写下射九留一的记录"], "第三幕"),
+            "act1_beats": act1_beats,
+            "act2_beats": act2_beats,
+            "act3_beats": act3_beats,
+        }
 
     if title == "北冥鲲鹏":
         def _beat(goal, visual, emotion, info, ban, humor, foreshadow="阿浪的嘲笑逐渐变轻，老龟的沉默成为见证", relation="阿浪从调侃转为惊愕，主角始终自己完成选择"):
@@ -684,9 +857,256 @@ def myth_core_requirement_met(text: str, myth_core: dict, final: bool = False) -
     return myth_core_required_hit_count(text, myth_core, field) >= min_hits
 
 
+def thread_protagonist_required_hit_count(text: str, myth_core: dict) -> int:
+    if not text or not myth_core:
+        return 0
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    required = thread_constraint.get("required_phrases", []) if isinstance(thread_constraint, dict) else []
+    return sum(1 for term in required if term and term in text)
+
+
+def thread_protagonist_external_terms(myth_core: dict) -> list:
+    if not myth_core:
+        return []
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    if not thread_constraint:
+        return []
+    protagonist = thread_constraint.get("_protagonist", {})
+    continuity_terms = [term for term in protagonist.get("continuity_terms", []) if term]
+    if not continuity_terms:
+        return []
+
+    local_terms = set()
+    for term in [myth_core.get("title", "")] + myth_core.get("aliases", []):
+        if term:
+            local_terms.add(term)
+    for term in myth_core.get("must_include", []) or []:
+        if term:
+            local_terms.add(term)
+    for term in myth_core.get("final_required_phrases", []) or []:
+        if term:
+            local_terms.add(term)
+    for term in thread_constraint.get("required_phrases", []) or []:
+        if term:
+            local_terms.add(term)
+
+    external_terms = []
+    for term in continuity_terms:
+        if term in local_terms:
+            continue
+        if any(term in local for local in local_terms):
+            continue
+        external_terms.append(term)
+    return external_terms
+
+
+def thread_protagonist_system_requirement_met(text: str, myth_core: dict) -> bool:
+    if not text or not myth_core:
+        return True
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    if not thread_constraint:
+        return True
+    protagonist = thread_constraint.get("_protagonist", {})
+
+    global_required = protagonist.get("global_required_phrases", [])
+    if global_required and not any(term and term in text for term in global_required):
+        return False
+
+    external_terms = thread_protagonist_external_terms(myth_core)
+    if external_terms and not any(term in text for term in external_terms):
+        return False
+
+    return True
+
+
+def thread_protagonist_requirement_met(text: str, myth_core: dict) -> bool:
+    if not myth_core:
+        return True
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    if not thread_constraint:
+        return True
+    required = thread_constraint.get("required_phrases", [])
+    if not required:
+        return True
+    min_hits = thread_constraint.get("min_required_phrase_hits")
+    if not isinstance(min_hits, int):
+        min_hits = len(required)
+    return (
+        thread_protagonist_required_hit_count(text, myth_core) >= min_hits
+        and thread_protagonist_system_requirement_met(text, myth_core)
+    )
+
+
+def contains_thread_protagonist_violation(text: str, myth_core: dict = None) -> bool:
+    if not text or not myth_core:
+        return False
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    if not thread_constraint:
+        return False
+
+    for term in thread_constraint.get("forbidden", []) or []:
+        if term and term in text:
+            return True
+
+    protagonist = thread_constraint.get("_protagonist", {})
+    for term in protagonist.get("global_forbidden", []) or []:
+        if term and term in text:
+            return True
+
+    # 这些是串线主人公最容易被模型写偏的硬禁区，使用短模式单独拦截。
+    forbidden_patterns = [
+        r'阿满[^。！？\n]{0,30}(射箭|射日|补天|炼石|画出八卦|发明文字|捏出人|尝百草|搭鹊桥|砍倒桂树)',
+        r'阿满[^。！？\n]{0,30}(替|代替|帮)[^。！？\n]{0,20}(后羿|女娲|伏羲|仓颉|神农|愚公|精卫|吴刚)[^。！？\n]{0,20}(完成|解决)',
+        r'阿满[^。！？\n]{0,30}(系统|玩家|穿越者|现代人|直播|手机|电脑|导航)',
+    ]
+    return any(re.search(pattern, text) for pattern in forbidden_patterns)
+
+
+def houyi_story_quality_met(text: str, myth_core: dict = None) -> bool:
+    """
+    后羿射日专属验收：
+    - 必须能看出按顺序射落九日，而不是跳号、倒叙或一团乱写
+    - 必须主动留下最后一个太阳
+    - 必须出现阿满的记录功能，而不是只让阿满反复狼狈出场
+    """
+    if not text or not myth_core or myth_core.get("title") != "后羿射日":
+        return True
+
+    forbidden_terms = [
+        "备胎", "午后三点", "三点钟", "烽燧塔", "缰绳", "护身符", "玄铁匕首",
+        "酒葫芦竟莫名", "水源奇迹", "鸡冠羽饰", "药膳包", "六十七只蚂蚁",
+        "流浪狗", "现代战术", "战斗", "目标案例介绍",
+    ]
+    if any(term in text for term in forbidden_terms):
+        return False
+
+    required_core_groups = [
+        ["十日并出"],
+        ["大地焦灼", "百姓受难", "百姓遭殃", "干裂"],
+        ["射落九日", "射落九个太阳", "九个太阳被射落", "后羿射落九日"],
+        ["留下一日", "留下最后一个太阳", "留下一个太阳", "留下一轮太阳", "射九留一"],
+        ["天地恢复", "恢复正常", "温度降", "重获清凉", "万物复苏"],
+        ["阿满"],
+        ["青竹简"],
+    ]
+    for group in required_core_groups:
+        if not any(term in text for term in group):
+            return False
+
+    ordered_marks = [
+        ["第一箭", "第一日", "第一个太阳", "第一枚太阳"],
+        ["第二箭", "第二日", "第二个太阳", "第二枚太阳"],
+        ["第三箭", "第三日", "第三个太阳", "第三枚太阳"],
+        ["第四箭", "第四日", "第四个太阳", "第四枚太阳"],
+        ["第五箭", "第五日", "第五个太阳", "第五枚太阳"],
+        ["第六箭", "第六日", "第六个太阳", "第六枚太阳"],
+        ["第七箭", "第七日", "第七个太阳", "第七枚太阳"],
+        ["第八箭", "第八日", "第八个太阳", "第八枚太阳"],
+        ["第九箭", "第九日", "第九个太阳", "第九枚太阳"],
+    ]
+    positions = []
+    for group in ordered_marks:
+        group_positions = [text.find(term) for term in group if term in text]
+        if not group_positions:
+            return False
+        positions.append(min(pos for pos in group_positions if pos >= 0))
+    if positions != sorted(positions):
+        return False
+
+    final_choice_pos = min(
+        [text.find(term) for term in ["留下一日", "留下最后一个太阳", "留下一个太阳", "留下一轮太阳", "射九留一"] if term in text]
+        or [-1]
+    )
+    ninth_pos = positions[-1]
+    if final_choice_pos < ninth_pos:
+        return False
+
+    # 阿满必须承担“记录射九留一”的功能，而不只是围观喊热。
+    record_patterns = [
+        r'阿满[^。！？\n]{0,80}(青竹简|竹简)[^。！？\n]{0,80}(射九留一|射落九日|留下一日|留下最后一个太阳)',
+        r'(射九留一|射落九日|留下一日|留下最后一个太阳)[^。！？\n]{0,80}阿满[^。！？\n]{0,80}(青竹简|竹简)',
+    ]
+    if not any(re.search(pattern, text) for pattern in record_patterns):
+        return False
+
+    return True
+
+
+THREAD_BRIDGE_FALLBACKS = {
+    "八仙过海": "阿满把这一简夹进《山海十八简》时，还特地在页角补了一笔：后羿那边是太阳多得烫手，八仙这边是海水多得下不了笔，自己这个小史官大概天生和“太多”犯冲。",
+    "北冥鲲鹏": "阿满抱着青竹简，把北冥这一页郑重题进《山海十八简》；他想起八仙过海时见过风浪，可眼前这风浪像忽然长出翅膀，连他的旧笔都想先飞一步。",
+    "仓颉造字": "阿满把这一段收入《山海十八简》时，忽然想起神农尝百草那页自己差点把“苦”写成“哭”，便对仓颉多生出几分敬意：没有文字，连写错都没机会。",
+    "嫦娥奔月": "阿满在《山海十八简》里翻到后羿射日那页，指腹还记得当时的热；如今月光冷下来，他的旧笔忽然不敢乱抖，怕把分离写得太响。",
+    "伏羲画卦": "阿满把伏羲画卦收入《山海十八简》，又想起仓颉造字那一简：字能记事，可这些长短横线像天地自己打的结，光会写字还真不一定解得开。",
+    "后羿射日": "阿满把后羿射日记作《山海十八简》里最烫手的一简，顺手在旁边留了个小注：以后若轮到夸父追日，自己一定先把青竹简泡凉，免得还没开跑，字先熟了。",
+    "精卫填海": "阿满把精卫这一简夹进《山海十八简》，想起八仙过海时海浪只是热闹，这里的海浪却像专门抬杠；他数不清木石，只好先记下那份不肯停。",
+    "夸父追日": "阿满喘着把追日写进《山海十八简》，还翻到后羿射日那页嘀咕：那边是太阳太多，这边是太阳太会跑，自己夹在中间，只剩两条腿最讲道理。",
+    "雷泽华胥": "阿满把雷泽这一页收入《山海十八简》时，想起后来伏羲画卦的线条，心里一紧：有些故事不是从一句话开始，而是从一个大到写不下的足迹开始。",
+    "梁山伯与祝英台": "阿满把梁祝这一简收入《山海十八简》，想起牛郎织女那页也写过分隔；他难得没急着吐槽，只把青竹简合了合，像怕惊动纸上的两个人。",
+    "孟姜女哭长城": "阿满把孟姜女这一简写进《山海十八简》，忽然想起精卫一石一石衔向东海；原来有些坚持不是为了显得厉害，只是不肯把心里那个人丢下。",
+    "牛郎织女": "阿满把牛郎织女收入《山海十八简》时，翻到嫦娥奔月那页，月宫的冷和天河的远挤在一处，他便把玩笑收得很小，只敢让旧笔轻轻落下。",
+    "女娲补天": "阿满把女娲补天写进《山海十八简》，又想起盘古开出的天地如今裂开一角，连忙护住青竹简：天地的事果然没有一页是轻松收尾的。",
+    "女娲造人": "阿满把女娲造人收进《山海十八简》，还想起仓颉造字那页：人刚有了脚，还没来得及写自己的名字，已经把他的青竹简围得像赶集。",
+    "神农尝百草": "阿满把神农尝百草写进《山海十八简》时，顺手翻到仓颉造字那页，心想文字真好用，只是遇到苦草和毒草，字也会跟着舌头发麻。",
+    "吴刚伐桂": "阿满把吴刚伐桂记入《山海十八简》，又翻到嫦娥奔月那页；月宫的冷清原来不止一种，有人望着人间，有人每天把同一刀重新开始。",
+    "西王母": "阿满在瑶池把这一页放进《山海十八简》，心里明白自己后来跑遍女娲、后羿、牛郎织女那些现场，多半就是从西王母一句“去见世面”开始的。",
+    "愚公移山": "阿满把愚公移山写进《山海十八简》时，想起精卫填海那页，忽然不敢笑那些一天只多一点点的进度；有些故事慢得要命，却偏偏能把天地慢慢说服。",
+}
+
+
+def build_thread_bridge_fallback(myth_core: dict) -> str:
+    if not myth_core:
+        return ""
+    title = myth_core.get("title", "")
+    if title in THREAD_BRIDGE_FALLBACKS:
+        return THREAD_BRIDGE_FALLBACKS[title]
+
+    external_terms = thread_protagonist_external_terms(myth_core)
+    external_hint = external_terms[0] if external_terms else "另一处神话现场"
+    return (
+        f"阿满抱着青竹简，把这一页郑重收进《山海十八简》。他在页角补了一句，"
+        f"说这场事要和{external_hint}那一简前后相照，才看得出十八篇神话原来同在一片天地里。"
+    )
+
+
+def repair_thread_protagonist_system_link(text: str, myth_core: dict = None) -> str:
+    if not text or not myth_core:
+        return text
+    thread_constraint = myth_core.get("_thread_protagonist", {})
+    if not thread_constraint:
+        return text
+
+    needs_bridge = not thread_protagonist_system_requirement_met(text, myth_core)
+    required = thread_constraint.get("required_phrases", []) or []
+    missing_required = [term for term in required if term and term not in text]
+    missing_global = []
+    protagonist = thread_constraint.get("_protagonist", {})
+    for term in protagonist.get("global_required_phrases", []) or []:
+        if term and term not in text:
+            missing_global.append(term)
+
+    if not needs_bridge and not missing_required and not missing_global:
+        return text
+
+    bridge = build_thread_bridge_fallback(myth_core)
+    if not bridge:
+        return text
+    print("正在补强串线主人公十八篇体系连接：《山海十八简》/跨篇回忆")
+
+    lines = text.splitlines()
+    insert_at = len(lines)
+    for idx in range(len(lines) - 1, -1, -1):
+        if "阿满" in lines[idx] or "青竹简" in lines[idx]:
+            insert_at = idx + 1
+            break
+    lines.insert(insert_at, bridge)
+    return "\n".join(lines)
+
+
 def apply_myth_specific_postprocess(text: str, myth_core: dict = None) -> str:
     if not text or not myth_core:
         return text
+    text = repair_thread_protagonist_system_link(text, myth_core)
     if myth_core.get("title") == "北冥鲲鹏":
         text = text.replace("北海深处", "北冥深处")
         text = text.replace("北海之上", "北冥之上")
@@ -2076,6 +2496,16 @@ def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act
         "act3_touching": "第三幕的感动线索部分（高潮与收束）"
     }
     """
+    myth_title = (myth_core or {}).get("title", "")
+    extra_storyline_constraints = ""
+    if myth_title == "后羿射日":
+        extra_storyline_constraints = """
+【《后羿射日》情绪线硬约束】
+- 情绪线必须服务“射落九日、主动留一日、天地恢复”的主线。
+- 第三幕只能写后羿主动留下最后一个太阳，并由阿满在青竹简上记录“射九留一”。
+- 严禁写“第十个太阳隐入云中”“后羿甩出最后一箭”“最后一个太阳被射掉”“漏了个靶子”等会破坏射九留一的表达。
+- 阿满的情绪线只能是怕热护简、记箭序、最后郑重记录；不得让阿满摔倒或制造意外帮助后羿命中。
+"""
     system_message = {
         "role": "system",
         "content": get_myth_system_prompt_base(rag_content, myth_core) + f"""
@@ -2098,6 +2528,7 @@ def generate_touching_storyline(overall_outline, act1_outline, act2_outline, act
             - 情绪线索要自然，不能为了感动而强行煽情。
             - 要与幽默基调平衡；若结尾不方便感动，就用风趣、轻快、余味式收束。
             - 每幕线索应该具体、可执行，便于在写作时融入。
+            {extra_storyline_constraints}
         """
     }
     
@@ -2667,6 +3098,8 @@ def violates_myth_consistency(text: str, myth_core: dict = None) -> bool:
         return False
     if contains_myth_core_violation(text, myth_core):
         return True
+    if contains_thread_protagonist_violation(text, myth_core):
+        return True
     canonical_terms = myth_core.get("canonical_terms", {})
     if isinstance(canonical_terms, dict):
         for _label, value in canonical_terms.items():
@@ -2719,6 +3152,12 @@ def validate_story_quality(text: str, prompt: str = "", myth_core: dict = None) 
         return False
 
     if myth_core and not myth_core_required_sequence_met(text, myth_core):
+        return False
+
+    if myth_core and not thread_protagonist_requirement_met(text, myth_core):
+        return False
+
+    if myth_core and not houyi_story_quality_met(text, myth_core):
         return False
 
     punctuation_count = sum(text.count(p) for p in "，。！？")
@@ -2994,6 +3433,16 @@ def generate_segment_for_beat(
 - 若本神话涉及核心道具，必须保持道具状态单一清楚：藏在哪里、谁要夺取、谁如何处理、处理后产生什么不可逆后果。
 - 辅助吐槽角色不得主导冲突，不得把核心选择写成单纯闹剧、误触事故或聊天拌嘴。
 """
+        elif myth_title == "后羿射日":
+            special_constraints = """
+【第二幕《后羿射日》逐箭顺序硬约束】
+- 本幕核心不是泛泛“打败太阳”，而是后羿亲自按顺序射落九个太阳。
+- 当前节拍卡若写某一箭或某几箭，必须明确写出：后羿站定/搭箭/拉弓/放箭、对应第几日中箭坠落、天地或百姓产生什么变化。
+- 严禁跳号、倒叙重启或重复射同一个太阳；前文已射落的太阳不能再次出现。
+- 严禁把太阳写成长期躲藏、玩捉迷藏、引出新支线；太阳可以有热浪反扑，但不能抢成反派角色。
+- 严禁新增护身符、匕首、酒葫芦水源奇迹、备胎、缰绳、烽燧塔、蚂蚁搬叶等无关道具或插曲。
+- 阿满只能护青竹简、记录箭序、短促吐槽或狼狈见证；不得让阿满摔倒导致后羿命中，也不得让阿满影响射日结果。
+"""
         else:
             special_constraints = """
 【第二幕创世/英雄叙事约束】
@@ -3012,6 +3461,15 @@ def generate_segment_for_beat(
 - 结尾的主题不是打败谁，而是离开狭小尺度；下方嘲笑声要变小，阿浪如出现应沉默或低声认可。
 - 场景只沿“北冥海面/高空风口/南冥天池远方”推进，不要新增东海、码头、商船、昆仑雪峰等地点。
 - 结尾幽默最多一句嘴硬型余味，不得再密集吐槽。
+"""
+        elif (myth_core or {}).get("title", "") == "后羿射日":
+            special_constraints = """
+【第三幕《后羿射日》留一日收束硬约束】
+- 第三幕只能写射落九日之后的选择与余波：后羿主动留下最后一个太阳，天地恢复正常，百姓从灾难中缓过来。
+- 必须明确“留下最后一个太阳”是后羿的克制和判断，不是漏靶、射不中、忘了射、少带箭或太阳逃走。
+- 必须让阿满在结尾附近用青竹简记录“射九留一”或“射落九日，留下一日”，但不得让阿满发表长篇大道理。
+- 严禁再写第一箭、第二箭或补射过程；严禁让最后一个太阳变成新敌人、新支线或继续失控。
+- 结尾幽默最多一处，优先用阿满摸青竹简温度、写错又改正等记录梗收束。
 """
         else:
             special_constraints = """
@@ -3390,6 +3848,26 @@ def generate_myth_rewrite(prompt):
     myth_core = find_myth_core(prompt)
     if myth_core:
         print(f"已加载神话核心主旨约束：{myth_core.get('title', '')}")
+        thread_constraint = myth_core.get("_thread_protagonist", {})
+        if thread_constraint:
+            protagonist = thread_constraint.get("_protagonist", {})
+            print(
+                "正在参考串线主人公约束："
+                f"{protagonist.get('name', '阿满')} / {thread_constraint.get('role', '')}"
+            )
+            if protagonist.get("series_purpose"):
+                print(
+                    "正在参考十八篇体系串联目标："
+                    f"{protagonist.get('series_purpose')}"
+                )
+            callback_options = thread_constraint.get("callback_options", [])
+            if callback_options:
+                print(
+                    "本篇可用跨篇连接建议："
+                    + "；".join(callback_options[:2])
+                )
+        else:
+            print("警告：当前神话未匹配到串线主人公约束。")
     else:
         print("警告：未匹配到本篇神话核心主旨约束，将仅使用通用神话骨架规则。")
     rag_content = searchresult_content(prompt)
@@ -3434,6 +3912,11 @@ def generate_myth_rewrite(prompt):
         if not outline_plan_is_usable(acts_outline, myth_core) and myth_core:
             print("警告：模型分幕/节拍卡仍不可用，已按神话核心事件链生成兜底规划。")
             acts_outline = build_core_fallback_plan(prompt, myth_core)
+            overall_outline = "\n".join([
+                acts_outline.get("act1", ""),
+                acts_outline.get("act2", ""),
+                acts_outline.get("act3", ""),
+            ]).strip()
     print(f"第一幕大纲：\n{acts_outline['act1']}\n")
     print(f"第二幕大纲：\n{acts_outline['act2']}\n")
     print(f"第三幕大纲：\n{acts_outline['act3']}\n")
