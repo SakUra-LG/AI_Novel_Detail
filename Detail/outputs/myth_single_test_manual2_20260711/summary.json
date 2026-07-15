@@ -1,0 +1,61 @@
+{
+  "created_at": "2026-07-11T10:01:23",
+  "total": 1,
+  "passed": 1,
+  "failed_titles": [],
+  "reports": [
+    {
+      "title": "八仙过海",
+      "text_path": "Detail\\outputs\\myth_single_test_manual2_20260711\\texts\\八仙过海.txt",
+      "log_path": "Detail\\outputs\\myth_single_test_manual2_20260711\\logs\\八仙过海.txt",
+      "generation": {
+        "generated": true,
+        "skipped": true,
+        "preflight": {
+          "ok": true,
+          "skipped": true
+        }
+      },
+      "audit": {
+        "title": "八仙过海",
+        "length": 7287,
+        "line_count": 24,
+        "humor_marker_count": 85,
+        "external_terms": [
+          "女娲"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "不乘船",
+          "各显神通"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": true,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": true,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": true
+        },
+        "failed": [],
+        "pass_static": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "title": "夸父追日",
+  "text_path": "Detail\\outputs\\myth_quality_v8_qwen3max_kuafu_20260711\\texts\\夸父追日.txt",
+  "log_path": "Detail\\outputs\\myth_quality_v8_qwen3max_kuafu_20260711\\logs\\夸父追日.txt",
+  "generation": {
+    "generated": false,
+    "returncode": 1,
+    "timed_out": false,
+    "started_at": "2026-07-11T21:10:03",
+    "finished_at": "2026-07-11T21:10:12",
+    "preflight": {
+      "ok": true,
+      "reply": "测试成功",
+      "returncode": 0,
+      "attempt": 1
+    }
+  },
+  "audit": {
+    "title": "夸父追日",
+    "length": 0,
+    "checks": {},
+    "failed": [
+      "generation_failed"
+    ],
+    "pass_static": false
+  }
+}

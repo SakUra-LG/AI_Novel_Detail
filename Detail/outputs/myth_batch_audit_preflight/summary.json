@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-07-10T12:10:13",
+  "total": 1,
+  "passed": 0,
+  "failed_titles": [
+    "八仙过海"
+  ],
+  "reports": [
+    {
+      "title": "八仙过海",
+      "text_path": "Detail\\outputs\\myth_batch_audit_preflight\\texts\\八仙过海.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_preflight\\logs\\八仙过海.log",
+      "generation": {
+        "generated": false,
+        "skipped": true,
+        "preflight": {
+          "ok": false,
+          "reply": "调用通义千问 API 失败（已重试 1 次）: SSLError - HTTPSConnectionPool(host='dashscope.aliyuncs.com', port=443): Max retries exceeded with url: /api/v1/services/aigc/text-generation/generation (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1081)')))\n建议：请检查网络连接或稍后重试"
+        },
+        "reason": "api_preflight_failed"
+      },
+      "audit": {
+        "title": "八仙过海",
+        "length": 0,
+        "checks": {},
+        "failed": [
+          "generation_failed"
+        ],
+        "pass_static": false
+      }
+    }
+  ]
+}

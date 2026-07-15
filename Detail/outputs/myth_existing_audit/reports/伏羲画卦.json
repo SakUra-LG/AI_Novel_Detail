@@ -1,0 +1,63 @@
+{
+  "title": "伏羲画卦",
+  "text_path": "Detail\\outputs\\myth_existing_audit\\texts\\伏羲画卦.txt",
+  "log_path": "Detail\\outputs\\myth_existing_audit\\logs\\伏羲画卦.log",
+  "generation": {
+    "generated": true,
+    "skipped": true,
+    "preflight": {
+      "ok": true,
+      "skipped": true
+    }
+  },
+  "audit": {
+    "title": "伏羲画卦",
+    "length": 3986,
+    "line_count": 25,
+    "humor_marker_count": 11,
+    "external_terms": [],
+    "thread_required_hit_count": 2,
+    "thread_required_phrases": [
+      "阿满",
+      "青竹简",
+      "伏羲",
+      "八卦"
+    ],
+    "checks": {
+      "length_7000_to_9000": false,
+      "length_project_range": false,
+      "no_garbled_text": false,
+      "no_body_drift": true,
+      "no_myth_consistency_violation": true,
+      "myth_core_required": false,
+      "myth_final_phrases": false,
+      "thread_required": false,
+      "thread_system_link": false,
+      "has_aman": false,
+      "has_bamboo_slips": false,
+      "has_shanhai_18": false,
+      "has_external_myth_link": false,
+      "forbidden_humor_clean": true,
+      "humor_requirement": true,
+      "humor_marker_min": false,
+      "houyi_quality": true,
+      "project_validate_story_quality": false
+    },
+    "failed": [
+      "length_7000_to_9000",
+      "length_project_range",
+      "no_garbled_text",
+      "myth_core_required",
+      "myth_final_phrases",
+      "thread_required",
+      "thread_system_link",
+      "has_aman",
+      "has_bamboo_slips",
+      "has_shanhai_18",
+      "has_external_myth_link",
+      "humor_marker_min",
+      "project_validate_story_quality"
+    ],
+    "pass_static": false
+  }
+}

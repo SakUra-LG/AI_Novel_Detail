@@ -1,0 +1,58 @@
+{
+  "title": "北冥鲲鹏",
+  "text_path": "Detail\\outputs\\myth_final_group_A_retry6_20260712\\texts\\北冥鲲鹏.txt",
+  "log_path": "Detail\\outputs\\myth_final_group_A_retry6_20260712\\logs\\北冥鲲鹏.txt",
+  "generation": {
+    "generated": true,
+    "returncode": 0,
+    "timed_out": false,
+    "started_at": "2026-07-12T15:35:30",
+    "finished_at": "2026-07-12T15:35:45",
+    "preflight": {
+      "ok": true,
+      "reply": "测试成功",
+      "returncode": 0,
+      "attempt": 1
+    }
+  },
+  "audit": {
+    "title": "北冥鲲鹏",
+    "length": 9281,
+    "line_count": 37,
+    "humor_marker_count": 32,
+    "external_terms": [
+      "八仙"
+    ],
+    "thread_required_hit_count": 4,
+    "thread_required_phrases": [
+      "阿满",
+      "青竹简",
+      "北冥",
+      "大鹏"
+    ],
+    "checks": {
+      "length_near_8000": true,
+      "length_project_range": true,
+      "no_garbled_text": true,
+      "no_body_drift": true,
+      "no_myth_consistency_violation": true,
+      "myth_core_required": true,
+      "myth_final_phrases": true,
+      "thread_required": true,
+      "thread_system_link": true,
+      "thread_valid_cross_story_bridge": true,
+      "no_thread_protagonist_violation": true,
+      "has_aman": true,
+      "has_bamboo_slips": true,
+      "has_shanhai_18": true,
+      "has_external_myth_link": true,
+      "forbidden_humor_clean": true,
+      "humor_requirement": true,
+      "humor_marker_min": true,
+      "houyi_quality": true,
+      "project_validate_story_quality": true
+    },
+    "failed": [],
+    "pass_static": true
+  }
+}

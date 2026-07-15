@@ -1,0 +1,63 @@
+{
+  "title": "嫦娥奔月",
+  "text_path": "Detail\\outputs\\myth_existing_audit\\texts\\嫦娥奔月.txt",
+  "log_path": "Detail\\outputs\\myth_existing_audit\\logs\\嫦娥奔月.log",
+  "generation": {
+    "generated": true,
+    "skipped": true,
+    "preflight": {
+      "ok": true,
+      "skipped": true
+    }
+  },
+  "audit": {
+    "title": "嫦娥奔月",
+    "length": 3233,
+    "line_count": 51,
+    "humor_marker_count": 19,
+    "external_terms": [
+      "吴刚",
+      "西王母"
+    ],
+    "thread_required_hit_count": 2,
+    "thread_required_phrases": [
+      "阿满",
+      "青竹简",
+      "嫦娥",
+      "不死药"
+    ],
+    "checks": {
+      "length_7000_to_9000": false,
+      "length_project_range": false,
+      "no_garbled_text": true,
+      "no_body_drift": true,
+      "no_myth_consistency_violation": false,
+      "myth_core_required": false,
+      "myth_final_phrases": true,
+      "thread_required": false,
+      "thread_system_link": false,
+      "has_aman": false,
+      "has_bamboo_slips": false,
+      "has_shanhai_18": false,
+      "has_external_myth_link": true,
+      "forbidden_humor_clean": true,
+      "humor_requirement": true,
+      "humor_marker_min": true,
+      "houyi_quality": true,
+      "project_validate_story_quality": false
+    },
+    "failed": [
+      "length_7000_to_9000",
+      "length_project_range",
+      "no_myth_consistency_violation",
+      "myth_core_required",
+      "thread_required",
+      "thread_system_link",
+      "has_aman",
+      "has_bamboo_slips",
+      "has_shanhai_18",
+      "project_validate_story_quality"
+    ],
+    "pass_static": false
+  }
+}

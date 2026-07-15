@@ -1,0 +1,307 @@
+{
+  "created_at": "2026-07-10T20:34:33",
+  "total": 5,
+  "passed": 4,
+  "failed_titles": [
+    "西王母"
+  ],
+  "reports": [
+    {
+      "title": "女娲造人",
+      "text_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\texts\\女娲造人.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\logs\\女娲造人.log",
+      "generation": {
+        "generated": true,
+        "returncode": 0,
+        "timed_out": false,
+        "started_at": "2026-07-10T20:22:32",
+        "finished_at": "2026-07-10T20:25:04",
+        "preflight": {
+          "ok": true,
+          "reply": "测试成功",
+          "returncode": 0,
+          "attempt": 1
+        }
+      },
+      "audit": {
+        "title": "女娲造人",
+        "length": 7673,
+        "line_count": 48,
+        "humor_marker_count": 21,
+        "external_terms": [
+          "仓颉"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "女娲",
+          "黄土"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": true,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": true,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": true
+        },
+        "failed": [],
+        "pass_static": true
+      }
+    },
+    {
+      "title": "神农尝百草",
+      "text_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\texts\\神农尝百草.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\logs\\神农尝百草.log",
+      "generation": {
+        "generated": true,
+        "returncode": 0,
+        "timed_out": false,
+        "started_at": "2026-07-10T20:25:04",
+        "finished_at": "2026-07-10T20:27:03",
+        "preflight": {
+          "ok": true,
+          "reply": "测试成功",
+          "returncode": 0,
+          "attempt": 1
+        }
+      },
+      "audit": {
+        "title": "神农尝百草",
+        "length": 8004,
+        "line_count": 59,
+        "humor_marker_count": 20,
+        "external_terms": [
+          "仓颉"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "神农",
+          "百草"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": true,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": true,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": true
+        },
+        "failed": [],
+        "pass_static": true
+      }
+    },
+    {
+      "title": "吴刚伐桂",
+      "text_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\texts\\吴刚伐桂.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\logs\\吴刚伐桂.log",
+      "generation": {
+        "generated": true,
+        "returncode": 0,
+        "timed_out": false,
+        "started_at": "2026-07-10T20:27:03",
+        "finished_at": "2026-07-10T20:29:38",
+        "preflight": {
+          "ok": true,
+          "reply": "测试成功",
+          "returncode": 0,
+          "attempt": 1
+        }
+      },
+      "audit": {
+        "title": "吴刚伐桂",
+        "length": 7204,
+        "line_count": 48,
+        "humor_marker_count": 20,
+        "external_terms": [
+          "嫦娥"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "吴刚",
+          "桂树"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": true,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": true,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": true
+        },
+        "failed": [],
+        "pass_static": true
+      }
+    },
+    {
+      "title": "西王母",
+      "text_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\texts\\西王母.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\logs\\西王母.log",
+      "generation": {
+        "generated": true,
+        "returncode": 0,
+        "timed_out": false,
+        "started_at": "2026-07-10T20:29:38",
+        "finished_at": "2026-07-10T20:32:04",
+        "preflight": {
+          "ok": true,
+          "reply": "测试成功",
+          "returncode": 0,
+          "attempt": 1
+        }
+      },
+      "audit": {
+        "title": "西王母",
+        "length": 7798,
+        "line_count": 44,
+        "humor_marker_count": 17,
+        "external_terms": [
+          "后羿",
+          "牛郎",
+          "织女",
+          "女娲"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "西王母",
+          "瑶池"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": false,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": false,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": false
+        },
+        "failed": [
+          "no_myth_consistency_violation",
+          "no_thread_protagonist_violation",
+          "project_validate_story_quality"
+        ],
+        "pass_static": false
+      }
+    },
+    {
+      "title": "愚公移山",
+      "text_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\texts\\愚公移山.txt",
+      "log_path": "Detail\\outputs\\myth_batch_audit_batch4_retry2\\logs\\愚公移山.log",
+      "generation": {
+        "generated": true,
+        "returncode": 0,
+        "timed_out": false,
+        "started_at": "2026-07-10T20:32:04",
+        "finished_at": "2026-07-10T20:34:19",
+        "preflight": {
+          "ok": true,
+          "reply": "测试成功",
+          "returncode": 0,
+          "attempt": 1
+        }
+      },
+      "audit": {
+        "title": "愚公移山",
+        "length": 7267,
+        "line_count": 59,
+        "humor_marker_count": 32,
+        "external_terms": [
+          "精卫"
+        ],
+        "thread_required_hit_count": 4,
+        "thread_required_phrases": [
+          "阿满",
+          "青竹简",
+          "愚公",
+          "移山"
+        ],
+        "checks": {
+          "length_7000_to_9000": true,
+          "length_project_range": true,
+          "no_garbled_text": true,
+          "no_body_drift": true,
+          "no_myth_consistency_violation": true,
+          "myth_core_required": true,
+          "myth_final_phrases": true,
+          "thread_required": true,
+          "thread_system_link": true,
+          "thread_valid_cross_story_bridge": true,
+          "no_thread_protagonist_violation": true,
+          "has_aman": true,
+          "has_bamboo_slips": true,
+          "has_shanhai_18": true,
+          "has_external_myth_link": true,
+          "forbidden_humor_clean": true,
+          "humor_requirement": true,
+          "humor_marker_min": true,
+          "houyi_quality": true,
+          "project_validate_story_quality": true
+        },
+        "failed": [],
+        "pass_static": true
+      }
+    }
+  ]
+}

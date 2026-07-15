@@ -1,0 +1,68 @@
+{
+  "title": "嫦娥奔月",
+  "text_path": "Detail\\outputs\\myth_batch_audit_batch1_retry1\\texts\\嫦娥奔月.txt",
+  "log_path": "Detail\\outputs\\myth_batch_audit_batch1_retry1\\logs\\嫦娥奔月.log",
+  "generation": {
+    "generated": true,
+    "returncode": 0,
+    "timed_out": false,
+    "started_at": "2026-07-10T14:50:03",
+    "finished_at": "2026-07-10T14:53:45",
+    "preflight": {
+      "ok": true,
+      "reply": "测试成功",
+      "returncode": 0,
+      "attempt": 1
+    }
+  },
+  "audit": {
+    "title": "嫦娥奔月",
+    "length": 6836,
+    "line_count": 44,
+    "humor_marker_count": 11,
+    "external_terms": [],
+    "thread_required_hit_count": 4,
+    "thread_required_phrases": [
+      "阿满",
+      "青竹简",
+      "嫦娥",
+      "不死药"
+    ],
+    "checks": {
+      "length_7000_to_9000": false,
+      "length_project_range": false,
+      "no_garbled_text": false,
+      "no_body_drift": true,
+      "no_myth_consistency_violation": false,
+      "myth_core_required": false,
+      "myth_final_phrases": true,
+      "thread_required": false,
+      "thread_system_link": false,
+      "thread_valid_cross_story_bridge": false,
+      "no_thread_protagonist_violation": true,
+      "has_aman": true,
+      "has_bamboo_slips": true,
+      "has_shanhai_18": true,
+      "has_external_myth_link": false,
+      "forbidden_humor_clean": true,
+      "humor_requirement": true,
+      "humor_marker_min": false,
+      "houyi_quality": true,
+      "project_validate_story_quality": false
+    },
+    "failed": [
+      "length_7000_to_9000",
+      "length_project_range",
+      "no_garbled_text",
+      "no_myth_consistency_violation",
+      "myth_core_required",
+      "thread_required",
+      "thread_system_link",
+      "thread_valid_cross_story_bridge",
+      "has_external_myth_link",
+      "humor_marker_min",
+      "project_validate_story_quality"
+    ],
+    "pass_static": false
+  }
+}

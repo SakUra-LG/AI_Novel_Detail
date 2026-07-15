@@ -1,0 +1,24 @@
+{
+  "model": "qwen3-max",
+  "total": 1,
+  "passed": 1,
+  "revise_titles": [],
+  "results": [
+    {
+      "canonical_complete": 9,
+      "humor_quality": 7,
+      "aman_series_function": 8,
+      "prose_like_houyi_baseline": 8,
+      "unsupported_magic_or_plot": [],
+      "repetition_or_filler": [
+        "多次描写华胥整理衣物、抚摸腹部等细节，虽服务于情绪但略显堆叠",
+        "阿满摔倒、弄脏竹简等桥段重复出现三次以上，虽符合人设但稍冗"
+      ],
+      "format_or_language_pollution": [],
+      "aman_violations": [],
+      "fatal_issues": [],
+      "verdict": "PASS",
+      "title": "雷泽华胥"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "title": "八仙过海",
+  "text_path": "Detail\\outputs\\myth_batch_audit_smoke_curl\\texts\\八仙过海.txt",
+  "log_path": "Detail\\outputs\\myth_batch_audit_smoke_curl\\logs\\八仙过海.log",
+  "generation": {
+    "generated": false,
+    "returncode": 3221225477,
+    "timed_out": false,
+    "started_at": "2026-07-10T12:16:51",
+    "finished_at": "2026-07-10T12:17:13",
+    "preflight": {
+      "ok": true,
+      "reply": "测试成功"
+    }
+  },
+  "audit": {
+    "title": "八仙过海",
+    "length": 0,
+    "checks": {},
+    "failed": [
+      "generation_failed"
+    ],
+    "pass_static": false
+  }
+}
