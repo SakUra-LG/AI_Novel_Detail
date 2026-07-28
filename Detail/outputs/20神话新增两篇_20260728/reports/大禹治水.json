@@ -1,0 +1,73 @@
+{
+  "title": "大禹治水",
+  "text_path": "Detail\\outputs\\20神话新增两篇_20260728\\texts\\大禹治水.txt",
+  "log_path": "Detail\\outputs\\20神话新增两篇_20260728\\logs\\大禹治水.txt",
+  "generation": {
+    "generated": true,
+    "skipped": true,
+    "preflight": {
+      "ok": true,
+      "skipped": true
+    }
+  },
+  "audit": {
+    "title": "大禹治水",
+    "length": 7508,
+    "line_count": 35,
+    "humor_marker_count": 30,
+    "humor_marker_floor": 24,
+    "dialogue_turn_count": 85,
+    "dialogue_turn_floor": 18,
+    "external_terms": [
+      "愚公"
+    ],
+    "thread_required_hit_count": 5,
+    "thread_required_phrases": [
+      "阿满",
+      "青竹简",
+      "大禹",
+      "改堵为疏",
+      "三过家门"
+    ],
+    "checks": {
+      "length_near_8000": true,
+      "length_project_range": true,
+      "no_garbled_text": true,
+      "no_body_drift": true,
+      "no_myth_consistency_violation": true,
+      "myth_core_required": true,
+      "myth_final_phrases": true,
+      "thread_required": true,
+      "thread_system_link": true,
+      "thread_valid_cross_story_bridge": true,
+      "no_thread_protagonist_violation": true,
+      "has_aman": true,
+      "has_bamboo_slips": true,
+      "has_shanhai_18": true,
+      "has_external_myth_link": true,
+      "forbidden_humor_clean": true,
+      "humor_requirement": true,
+      "humor_marker_min": true,
+      "strong_humor_dialogue_density": true,
+      "houyi_quality": true,
+      "project_validate_story_quality": true
+    },
+    "failed": [],
+    "pass_static": true,
+    "qwen_audit": {
+      "story_complete": 9,
+      "humor_like_nezha": 8,
+      "aman_series_link": 7,
+      "language_clean": 10,
+      "length_feels_enough": 9,
+      "main_issues": [
+        "阿满幽默高度依赖肢体狼狈（摔、呛、糊墨），笑点同质化，缺乏语言机锋或认知错位类高级幽默",
+        "‘阿满系列’联动薄弱：仅靠竹简、嘴硬、被动物戏弄等表层符号，未嵌入前作设定",
+        "大禹形象过于静默伟岸，与阿满互动中缺少反差性‘接招’——阿满抛梗，大禹常以哲思回应，削弱喜剧对位张力",
+        "部分段落节奏过密（如连续七次‘路过家门’），情感累积有余而呼吸感不足，影响幽默落地",
+        "‘疏’字反复洇染/写错形成视觉梗，但未升级为贯穿性文字魔法设定（如墨迹真会游动、字随水势变形等超现实呼应）"
+      ],
+      "actionable_fix": "将阿满的竹简设定为‘墨迹遇水即活’：让‘疏’字蝌蚪游走、‘龙’字蚯蚓扭动后真的钻入地缝引出暗流，使幽默从物理狼狈升维至神话逻辑自洽，并自然勾连《愚公》简中‘字能搬山’伏笔。"
+    }
+  }
+}

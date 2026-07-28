@@ -3,7 +3,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from batch_myth_quality_audit import STORY_TITLES, load_main_quietly, static_audit
+from batch_myth_quality_audit import DELIVERED_STORY_TITLES, load_main_quietly, static_audit
 
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -39,7 +39,7 @@ def main() -> int:
 
     reports = []
     missing = []
-    for title in STORY_TITLES:
+    for title in DELIVERED_STORY_TITLES:
         source_name = SOURCE_DIRS[title]
         source = OUTPUT_ROOT / source_name
         text_source = source / "texts" / f"{title}.txt"
@@ -71,7 +71,7 @@ def main() -> int:
 
     summary = {
         "created_at": datetime.now().isoformat(timespec="seconds"),
-        "total_expected": len(STORY_TITLES),
+        "total_expected": len(DELIVERED_STORY_TITLES),
         "total_copied": len(reports),
         "passed": sum(1 for report in reports if report["audit"]["pass_static"]),
         "missing": missing,
@@ -84,7 +84,7 @@ def main() -> int:
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(json.dumps({key: summary[key] for key in ("total_copied", "passed", "missing", "failed_titles")}, ensure_ascii=False))
-    return 0 if not missing and summary["passed"] == len(STORY_TITLES) else 1
+    return 0 if not missing and summary["passed"] == len(DELIVERED_STORY_TITLES) else 1
 
 
 if __name__ == "__main__":

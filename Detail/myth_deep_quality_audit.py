@@ -9,7 +9,6 @@ from batch_myth_quality_audit import STORY_TITLES, load_main_quietly
 
 CURRENT_DIR = Path(__file__).resolve().parent
 FINAL_DIR = CURRENT_DIR / "outputs" / "myth_final_18_houyi_quality_20260712"
-AUDIT_DIR = FINAL_DIR / "deep_audit"
 
 
 def parse_json_reply(reply: str) -> dict:
@@ -25,13 +24,17 @@ def parse_json_reply(reply: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stories", nargs="*", default=[])
+    parser.add_argument("--input-dir", default=str(FINAL_DIR), help="包含 texts 子目录的待审计产出目录。")
+    parser.add_argument("--output-dir", default=None, help="深度审计报告目录；默认写入输入目录/deep_audit。")
     args = parser.parse_args()
     story_titles = args.stories or STORY_TITLES
+    input_dir = Path(args.input_dir)
+    audit_dir = Path(args.output_dir) if args.output_dir else input_dir / "deep_audit"
     main_module = load_main_quietly()
-    AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+    audit_dir.mkdir(parents=True, exist_ok=True)
     results = []
     for index, title in enumerate(story_titles, 1):
-        text_path = FINAL_DIR / "texts" / f"{title}.txt"
+        text_path = input_dir / "texts" / f"{title}.txt"
         text = text_path.read_text(encoding="utf-8")
         myth_core = main_module.find_myth_core(f"改写神话故事{title}，要求有幽默")
         core_block = main_module.format_myth_core_block(myth_core)
@@ -89,7 +92,7 @@ def main() -> int:
         result = parse_json_reply(reply)
         result["title"] = title
         results.append(result)
-        (AUDIT_DIR / f"{title}.json").write_text(
+        (audit_dir / f"{title}.json").write_text(
             json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
@@ -101,7 +104,7 @@ def main() -> int:
         "results": results,
     }
     summary_name = "summary.json" if not args.stories else "partial_summary.json"
-    (AUDIT_DIR / summary_name).write_text(
+    (audit_dir / summary_name).write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(json.dumps({"passed": summary["passed"], "revise_titles": summary["revise_titles"]}, ensure_ascii=False))

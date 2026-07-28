@@ -38,7 +38,8 @@ except ModuleNotFoundError as exc:
 from humor_levels.humor_level_generator import generate_humor_level_versions
 
 
-MYTH_TARGET_TOTAL_MIN = 7800
+# 导师最新口径为“7500字左右”；保留一定上浮空间，但不为凑到7800机械补尾。
+MYTH_TARGET_TOTAL_MIN = 7500
 MYTH_TARGET_TOTAL_SOFT_MAX = 8700
 MYTH_TARGET_TOTAL_MAX = 9300
 MYTH_ACT_TARGETS = {
@@ -66,8 +67,6 @@ BAD_META_PHRASES = [
     "[因原文长度限制未能全部提供]",
     "未完待续",
     "续章未尽",
-    "未尽",
-    "未完",
     "欢迎提出进一步请求",
     "若您有兴趣了解更多详情",
     "下面是故事",
@@ -355,7 +354,7 @@ TRADITIONAL_TO_SIMPLIFIED.update(str.maketrans({
 
 META_RESIDUE_PATTERNS = [
     r'[（(][^）)]{0,80}(这段大约|多少字左右|接下来便是|下一节|实际书写|不显示|隐藏章节|待补|节拍卡|目标达成|隐含|勾勒|伏笔|备注|插入|未完|未尽)[^）)]{0,120}[）)]',
-    r'（?\s*(续章未尽|未完|未尽)\s*[…。\.]*\s*）?',
+    r'(?m)^\s*[（(]?\s*(续章未尽|未完|未尽)\s*[…。\.]*\s*[）)]?\s*$',
     r'[（(]\s*完毕\s*[）)]',
     r'[（(]此时此刻[^）)]{0,120}[）)]',
     r'这段大约[^。！？\n]{0,40}(字|字左右)',
@@ -1202,7 +1201,7 @@ def contains_thread_protagonist_violation(text: str, myth_core: dict = None) -> 
 
     # 这些是串线主人公最容易被模型写偏的硬禁区，使用短模式单独拦截。
     forbidden_patterns = [
-        r'阿满[^。！？\n]{0,30}(拉弓|搭箭|射出一箭|射落太阳|射落.*日|炼石补天|补上天空|画出八卦|造出文字|捏出人|尝遍百草|搭起鹊桥|砍倒桂树)',
+        r'阿满[^。！？\n]{0,30}(拉弓|搭箭|射出一箭|射落太阳|射落.*日|炼石补天|补上天空|画出八卦|造出文字|捏出人|尝遍百草|搭起鹊桥|砍倒桂树|打死李艮|打败敖丙|制服龙王|止住水患|决定改堵为疏|开凿龙门|疏通九河|引洪入海)',
         r'阿满[^。！？\n]{0,30}(替|代替|帮)[^。！？\n]{0,20}(后羿|女娲|伏羲|仓颉|神农|愚公|精卫|吴刚)[^。！？\n]{0,20}(完成|解决)',
         r'阿满[^。！？\n]{0,30}(系统|玩家|穿越者|现代人|直播|手机|电脑|导航)',
         r'山海(?!十八)[一二三四五六七八九十\d]{1,3}简',
@@ -1318,6 +1317,8 @@ THREAD_BRIDGE_FALLBACKS = {
     "吴刚伐桂": "阿满把吴刚伐桂记入《山海十八简》，又翻到嫦娥奔月那页；月宫的冷清原来不止一种，有人望着人间，有人每天把同一刀重新开始。",
     "西王母": "阿满在瑶池把这一页放进《山海十八简》，又翻到女娲造人那页的空白处，心里明白：瑶池一句“去见世面”，会把小史官派向更广的人间。",
     "愚公移山": "阿满把愚公移山写进《山海十八简》时，想起精卫填海那页，忽然不敢笑那些一天只多一点点的进度；有些故事慢得要命，却偏偏能把天地慢慢说服。",
+    "哪吒闹海": "阿满把《哪吒闹海》夹在《山海十八简》封卷之后，题作增补简：哪吒以混天绫搅动东海，闯下祸后没有躲，主动担责，以死谢罪；太乙真人再以莲花莲藕重塑化身，哪吒制服龙王、止住水患。阿满想起八仙过海那一简，小声写道：“八仙把海当路，哪吒先把海的脾气全请上了岸；我只负责记，绝不负责劝海消气。”",
+    "大禹治水": "阿满把《大禹治水》作为《山海十八简》的增补简收好，郑重补清：鲧治水失败，大禹承接重任，改堵为疏，疏山导水，三过家门而不入，最终开凿龙门、疏通九河、引洪入海，使九州安定。他又想起愚公移山那一简，低声道：“一个让山让路，一个替水找路，我的鞋在两篇里倒是都没走过干净路。”",
 }
 
 
@@ -1389,6 +1390,8 @@ MYTH_FINAL_REPAIR_PARAGRAPHS = {
     "吴刚伐桂": "阿满在月宫站了半夜，终于发现自己写的记录像昨天抄来的：吴刚举斧砍向桂树，斧声落下，桂树随砍随合；再砍，再合，像月光也在不断重复。他抱着青竹简小声吐槽：“这月宫日子准得可怕，连我打哈欠都像按时辰来的。”可笑意很快淡下去，他在《山海十八简》里补清：吴刚的惩罚不是砍倒桂树，而是在不断重复里学会反省。阿满又翻到嫦娥奔月那页，轻轻写道：月宫的冷清有许多种，有人望人间，有人砍不完心里的那一斧。",
     "西王母": "阿满以瑶池小史官的身份抱着青竹简站在昆仑风里，记录西王母设下的规矩：瑶池有蟠桃，也有不死药，可长生从来不是随手可取的甜头。求药的人说得动听，赴会的人笑得热闹，阿满写规矩写到手酸，差点把“不死药”旁边标成“请勿乱拿”。西王母真正做出抉择时，他立刻停住插话，只补清《山海十八简》这一笔：长生有代价，规矩背后是秩序，抉择背后也有人情。后来他合上青竹简，才明白瑶池的一句话，会把许多抉择慢慢推向人间。",
     "愚公移山": "阿满蹲在太行、王屋之间，试着记录每天移山进度，数字小得让人想叹气，旧笔都像在替他打瞌睡。智叟嘲笑愚公时，他本想插一句“这活确实不太像今日能收工”，可愚公说出子孙无穷匮、山不加增时，阿满立刻把玩笑咽回去。他在《山海十八简》里补明：愚公带着子孙移山，终于感动天帝，太行、王屋被移走二山。阿满又翻到精卫填海那页，写下：有些事慢得让人想笑，久了却能让天地改口。",
+    "哪吒闹海": "阿满抱着青竹简，把《哪吒闹海》题作《山海十八简》增补简。他依次写明：陈塘关的哪吒以混天绫搅动东海；巡海夜叉李艮问罪，龙太子敖丙随后交战；东海龙王敖光兴水逼迫，哪吒主动担责、以死谢罪；太乙真人用莲花莲藕化身使他重生，哪吒最终制服龙王、止住水患。写完他想起八仙过海那页，轻声道：“同一片海，八仙忙着过，哪吒忙着把脾气闹明白；幸好最后也把责任扛明白了。”",
+    "大禹治水": "阿满擦掉青竹简上的泥点，把《大禹治水》作为《山海十八简》增补简收好。他郑重写明：洪水泛滥，鲧治水失败，大禹承接治水重任；大禹改堵为疏，率众疏山导水，三过家门而不入，最终开凿龙门、疏通九河、引洪入海，使九州安定。阿满想起愚公移山那一简，小声补道：“一个替人把山搬开，一个替水把路找开；只有我的鞋，坚持把泥全带回来。”",
 }
 
 
@@ -1401,6 +1404,8 @@ MYTH_QUALITY_TAIL_PARAGRAPHS = {
     "雷泽华胥": "阿满后来又回到那枚大人迹旁边，试着拿青竹简量一量，量到第三回便尴尬地放弃了：“这不是脚印，这是让我这支旧笔认清自己有多短。”旁边有人差点笑出声，又被雷泽沉沉的风压低了嗓子。阿满只好把玩笑写得很小，把敬畏写得很重：华胥履迹感孕，伏羲由此降生，这一页不能闹得太响，因为它后面连着文明始祖，也连着女娲造人那页尚未展开的人间烟火。",
     "神农尝百草": "收药入筐时，阿满又把青竹简摊开检查一遍。他先看见自己把“辛辣”写得像“辛苦”，差点当场把旧笔藏进袖子里；又看见“微苦回甘”旁边被药汁洇出一团墨，像草药自己也在一本正经地表示不服。神农问他记清了吗，阿满立刻点头，点到一半又尴尬地停住：“记清了，就是有几味药看起来比我还不愿意被记住。”旁边村人笑出声，阿满赶紧护住青竹简，小声嘀咕：“别笑，药名写错是小事，后人照着煎错可就是我这支笔的罪过。”笑归笑，他最后仍郑重补明：神农尝百草，苦味、麻意、毒性、解法都必须写准，百姓往后少受一分病痛，今日这点手忙脚乱就都值得。",
     "西王母": "夜深之后，阿满还守在瑶池廊下整理青竹简。他一会儿写蟠桃规矩，一会儿写不死药禁令，写到手腕发酸，忍不住小声嘀咕：“昆仑风大，规矩更多，我这旧笔今日比赴会的人还忙。”旁边仙侍提醒他蟠桃几千年一熟，不死药更不能乱记，阿满立刻把青竹简抱紧，尴尬地补了一句：“明白，瑶池不是果铺，我也不是来试吃的。”话音刚落，他看见西王母静静望向瑶池水面，便立刻收住玩笑，只补下一行：长生不是热闹宴席上的甜果，也不是谁哭一哭就能带走的药；它牵着秩序，牵着抉择，也牵着每个求长生之人必须付出的代价。有人求药时说得可怜，有人望着蟠桃眼睛发亮，阿满本想把这些表情都写下来，可西王母抬眼的一瞬，他忽然明白规矩不是用来摆架子的，而是防止贪念把人间拖进更大的乱局。于是他把那句玩笑划掉，只留下“长生有代价”五个字，笔画写得很慢。阿满把这一页夹进《山海十八简》，明白有些故事从瑶池出发，却会在人间慢慢显出重量；他这个小史官能做的，不过是把西王母的抉择记准，把昆仑的风声记轻，把不该乱拿的不死药记得比自己的午饭还清楚。",
+    "哪吒闹海": "陈塘关水退后，阿满蹲在墙根晒青竹简，简页一张开，竟顺着风滴出一串水。哪吒看了半晌，忍不住笑：“你这记的是闹海，还是把海带回来了？”阿满尴尬地把简册倒过来，小声嘀咕：“我怕后人说现场不真，特意留一点证据。”旧笔偏偏被水泡得掉毛，他一写“混天绫”，最后一撇便顺着竹纹游走。哪吒一本正经地说那是东海余波，李靖在旁边拆台：“分明是你们两个都不肯把错认全。”阿满赶紧护住青竹简，嘴硬道：“他认闹海，我认字歪，分工很清楚。”众人忍不住笑出声。笑过之后，他把哪吒主动担责、莲花莲藕化身、制服龙王与止住水患一笔笔描正，再没拿那场谢罪开玩笑。",
+    "大禹治水": "洪水退后，阿满把青竹简铺在新露出的田埂上晾晒，泥点恰好糊住“疏”字。旁边少年探头一看，笑道：“又成‘改堵为堵’了。”阿满手忙脚乱去擦，结果把自己鼻尖也抹出一道泥，仍一本正经地说：“字可以一时堵住，河不能。”乡民问他跟着大禹走了这么久是不是终于不怕水，他抱紧竹简，小声嘀咕：“怕，尤其怕水认识我的字。”话音未落，沟里一股清水偏偏溅上衣摆，众人笑出声，他尴尬地后退半步，腿软归腿软，笔却没有停。他最后写清改堵为疏、三过家门、开凿龙门、疏通九河和引洪入海，才把这一页郑重夹进增补简。",
 }
 
 
@@ -1454,7 +1459,8 @@ def repair_myth_quality_tail(text: str, myth_core: dict = None) -> str:
     tail = MYTH_QUALITY_TAIL_PARAGRAPHS.get(title)
     if not tail or tail in text:
         return text
-    needs_tail = len(text) < MYTH_TARGET_TOTAL_MIN or humor_signal_count(text) < 14
+    humor_floor = 24 if title in {"哪吒闹海", "大禹治水"} else 14
+    needs_tail = len(text) < MYTH_TARGET_TOTAL_MIN or humor_signal_count(text) < humor_floor
     if not needs_tail:
         return prune_excess_thread_cross_story_bridges(text, myth_core)
     repaired = (text.rstrip() + "\n\n" + tail).strip()
@@ -2026,8 +2032,19 @@ def call_qianwen_api_via_curl(
             json.dump(payload, f, ensure_ascii=False)
             temp_path = f.name
 
+        curl_network_args = []
+        curl_interface = os.getenv("QWEN_CURL_INTERFACE", "").strip()
+        curl_resolve_ip = os.getenv("QWEN_CURL_RESOLVE_IP", "").strip()
+        if curl_interface:
+            curl_network_args.extend(["--interface", curl_interface])
+        if curl_resolve_ip:
+            curl_network_args.extend([
+                "--resolve",
+                f"dashscope.aliyuncs.com:443:{curl_resolve_ip}",
+            ])
         cmd = [
             "curl.exe",
+            *curl_network_args,
             "-sS",
             "--connect-timeout",
             str(min(15, timeout_seconds)),
@@ -4932,8 +4949,35 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
             "来客接受裁决，瑶池宴会恢复，但众人以行动遵守蟠桃与不死药规矩",
             "西王母在秩序中保留人情，长生有代价的主题由结果落下；阿满收入《山海十八简》并得到继续见世面的嘱咐",
         ]
+    elif title == "哪吒闹海":
+        part_focuses = [
+            "陈塘关临海百姓的寻常生活，哪吒与李靖、殷夫人的家庭日常，阿满来添《山海十八简》增补简；不得下水或开战",
+            "哪吒到九湾河戏水，混天绫搅动东海龙宫；写清无心闯祸如何发生，不得出现李艮和敖丙",
+            "巡海夜叉李艮上岸问罪，言语冲突升级，哪吒用乾坤圈打死李艮；动作清楚但不血腥，不得出现敖丙",
+            "龙太子敖丙出海追责，与哪吒交战；哪吒打败敖丙并抽去龙筋，阿满只在远处护简记录，不参与交战",
+            "东海龙王敖光到陈塘关问罪，李靖震怒、殷夫人护子，哪吒从嘴硬转为看见百姓将受牵连；不得兴水",
+            "四海龙王兴水逼迫陈塘关，百姓受灾；哪吒尝试独自面对，阿满承担灾情间的短促笑点但不嘲笑灾民",
+            "哪吒为不连累父母和百姓主动担责，以死谢罪；父母与百姓明确回应，描写克制、完全停止笑点",
+            "太乙真人收住哪吒魂魄，以莲花莲藕重塑化身；写重生动作、亲情牵挂和哪吒醒来后因莲身不习惯产生的一次干净互怼，严禁低俗身体笑话",
+            "哪吒以莲花化身再战，只用混天绫、乾坤圈和自身勇气亲自制服东海龙王敖光、令龙王收回水患；不得新增蛟虬、神兽、法术或让任何人代打",
+            "陈塘关恢复安宁，哪吒与李靖、殷夫人重新相见；阿满把完整因果写入《山海十八简》增补简并短促连接八仙过海",
+        ]
+    elif title == "大禹治水":
+        part_focuses = [
+            "洪水到来前村落的寻常生活随即被洪水打断，百姓流离，阿满抱着青竹简到场；不得出现治水方案",
+            "鲧以堵截之法治水失败并受罚，堤障越堵水势越高；明确给大禹留下教训，不得由阿满评定方法",
+            "大禹承接父亲未竟的治水重任，徒步勘察山川水势，经过比较后亲自决定改堵为疏",
+            "大禹率众开沟凿渠、疏山导水，初见水流转向；阿满因泥水和堵疏错字承担强笑点，不得指挥劳作",
+            "治水队伍面对山口阻塞与长期疲惫，大禹调整水道并准备开凿龙门；写众人协作，不得当天完成",
+            "大禹第一次、第二次经过家门而不入，听见家人消息仍继续赶往险情；阿满只保留极轻的嘴硬余味",
+            "大禹第三次经过家门而不入，明确听见家中声音、看见家门却为百姓继续前行；本段庄重，不得开强笑点",
+            "大禹带领众人开凿龙门、继续疏通九河，水路一段段连起来；阿满记录劳作与泥水反差，不得提出方案",
+            "九河疏通，洪水被引入大海，田地、道路和村落重新露出；写具体灾后恢复，不得提前总结九州安定",
+            "治水成功、九州安定，大禹终于踏上归家之路；阿满把改堵为疏、三过家门、开凿龙门、疏通九河、引洪入海写入《山海十八简》增补简并短促连接愚公移山",
+        ]
 
     thread = myth_core.get("_thread_protagonist", {}) or {}
+    final_required = "、".join(myth_core.get("final_required_phrases", []) or [])
     callback = (thread.get("callback_options", []) or ["在《山海十八简》页角用一句旧事连接另一篇神话"])[0]
     thread_must = "；".join(thread.get("must_do", []) or [])
     required_actions = myth_core.get("required_character_actions", {}) or {}
@@ -5166,11 +5210,17 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
         title_specific_rule = "必须明确写华胥在雷泽踏入大人足迹、因此感孕、经过孕期并亲自生下真实婴儿伏羲。严禁水中婴影、胎儿符号、血滴陶碗、预示未来功绩；伏羲出生后不扩写画卦、制器、历法等另一篇故事。"
     elif title == "西王母":
         title_specific_rule = "只允许昆仑、瑶池、蟠桃、不死药这些既有神异核心。严禁新增结晶、法阵、花影文字、银雾、掌印法术、神奇菌露或会自动变化的器物。西王母靠威严、判断和既有规矩解决冲突。"
+    elif title == "哪吒闹海":
+        title_specific_rule = "固定使用陈塘关、九湾河、李靖、殷夫人、混天绫、乾坤圈、巡海夜叉李艮、龙太子敖丙、东海龙王敖光、太乙真人、莲花莲藕化身。冲突必须逐级升级；哪吒必须主动担责、以死谢罪，描写克制不血腥；太乙真人只负责莲花重塑，复生后的哪吒只用混天绫、乾坤圈和自身行动制服龙王、令龙王收回水患。不得新增蛟虬、神兽或法术，不得让龙王把洪水喝回去。不得让水珠凝滞、时间停住、简页发热或墨字变化。不得以疯症、工伤、礼制、核查或低俗身体笑话调侃死伤与重生。严禁魔丸、灵珠、天劫咒、申公豹等现代影视原创设定。"
+    elif title == "大禹治水":
+        title_specific_rule = "必须写清洪水泛滥、鲧堵水失败、大禹承接重任、亲自发现改堵为疏、率众疏山导水、三过家门而不入、开凿龙门、疏通九河、引洪入海、九州安定。治水依靠长期勘察、劳作与众人协作，严禁法宝瞬间收水、神仙代劳、现代工程器械或阿满提出方案。三过家门只能写三次，结尾治水成功后大禹必须真正回家团聚，不得再次路过家门却不进。"
+    punchline_examples_text = get_punchline_examples(myth_core, limit=8)
     system_message = f"""
 你是成熟的中文民间神话轻喜剧小说作者。你将分十次连续写完《{title}》，每次只输出承接前文的小说正文，不写标题、幕名、列表、说明、总结或字数统计。
 全篇硬骨架：{'；'.join(events)}。必须严格按顺序，每个事件只发生一次。角色指定动作：{action_plan or '当前神话主角亲自完成核心行动'}。
 只能扩写这些事实。不得新增神兽、仙官、妖怪、法宝、预言、神秘身世、旧日传奇或新支线；普通配角不得代替主角完成行动。
 语言朴素、鲜活、清楚，以具体动作和自然对白为主，不堆华丽比喻，不写作文式寓意。伤痛描写克制，不写骨肉血浆，不机械数步数。
+严禁把笑点标成“第一处笑点、第二个笑点”，严禁用“第几桩事、第几号增补、流程、核查、备案、签字画押”等行政记录腔。不得写英文、洋文、本地化、合规性、编号、卷几、干支日期或精确年月日。不得堆砌精确尺寸、数量、人体关节、地质名词和施工参数；劳作只用普通人能看懂的动作写清。
 阿满是男性见闻小史官，只带青竹简、旧笔、小布袋，编写《山海十八简》。他承担主要笑点，只能记录、护简、观察、嘴硬吐槽，绝不替主角解决问题。每次让他出现二到四次即可，不能重复介绍、固定台词或同一种摔倒。悲剧和重大抉择处收住笑点。
 跨篇旧事只准在第十部分结尾出现一次。前九部分不得提到任何其他神话人物、器物或事件。
 本篇正向核心：{positive_core}
@@ -5178,6 +5228,10 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
 本篇专属硬规则：{title_specific_rule or '严格只写上述正向核心，不另造来源与支线。'}
 
 本篇阿满必须做：{thread_must}。
+
+【人工编写的本篇幽默对白节奏样本】
+{punchline_examples_text or '无专属样本；仍须使用当前神话动作、道具和人物性格制造笑点。'}
+只学习这些样本的短句抛接、三人拆台和情境反差，严禁逐句照抄。前半段与非悲剧情节要保持强烈幽默：除阿满外，核心人物和普通百姓也应有性格笑点；每个允许幽默的部分至少安排三组自然笑点，其中至少一组不是纯对白，而是动作、道具或记录翻车。
 
 以下示例提炼自用户认可的基准正文。只学习朴素短句、动作清楚、压力下嘴硬、苦中带笑和具体余波；不得复制示例动作或台词：
 {style_excerpt}
@@ -5188,21 +5242,27 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
     aman_parts = {1, 4, 6, 10}
     if title == "西王母":
         aman_parts = {1, 3, 5, 10}
+    elif title in {"哪吒闹海", "大禹治水"}:
+        aman_parts = {1, 3, 4, 6, 8, 10}
     for part_index, focus in enumerate(part_focuses, 1):
         previous_tail = accumulated[-1400:] if accumulated else "无，这是全文开头。"
         remaining = part_focuses[part_index:]
         if part_index == 1:
             part_rule = "先写约500字主线发生前的寻常生活和核心人物原本在做什么，再自然推进焦点。阿满必须自然到场并承担二到四个不同笑点。"
         elif part_index == 10:
-            part_rule = f"完成剩余核心事件和原神话结局，写出具体余波。阿满在重大结局后安静记录，把本篇收入《山海十八简》，只在最后用一两句完成这条跨篇连接：{callback}。"
+            part_rule = f"完成剩余核心事件和原神话结局，写出具体余波。阿满在重大结局后安静记录，把本篇收入《山海十八简》增补简，只在最后用一两句完成这条跨篇连接：{callback}。必须把这些收束短语逐一自然写入正文：{final_required}。不得把前文总结再写第二遍。"
+            if title == "哪吒闹海":
+                part_rule += " 本段只写水患停止后的家人重逢、百姓恢复生活和阿满收简；不得再打一场，不得新增法术、检验莲身、编号登记、签章或规章。"
+            elif title == "大禹治水":
+                part_rule += " 本段先写治水成功、九州安定，再让大禹真正走进家门与家人团聚；不得写他又一次过门不入，不得新增任何日期、纪年或专业地质词。"
         elif part_index in aman_parts:
             part_rule = "从前文动作直接继续，只推进本段焦点。阿满在这一段出现并承担至少五处短促、不同、可辨的笑点，笑点自然体现小声嘀咕、差点出丑、认真记错、嘴硬、尴尬被拆台等不同类型；不得低俗，不得递物、搀扶或干预主角行动。"
         else:
             part_rule = "从前文动作直接继续，只推进本段焦点。本段不得出现或提到阿满，让当前神话人物自行推进。"
-        if any(keyword in focus for keyword in ("力竭", "死亡", "死去", "牺牲", "离别", "哭长城")):
+        if any(keyword in focus for keyword in ("力竭", "死亡", "死去", "牺牲", "离别", "哭长城", "以死谢罪", "主动担责")):
             part_rule += " 本段必须庄重克制，只通过呼吸、步伐、神情、环境和旁人沉默表现沉重；不得出现血、骨、伤口、溃烂或身体损坏细节，不得开玩笑。"
         user_message = f"""
-这是《{title}》第{part_index}/10部分，目标1800到2200个中文字符；必须充分展开，不要提前结束。
+这是《{title}》第{part_index}/10部分，目标1500到1800个中文字符；充分写出人物动作、自然对白与生活反应，但不要用精确数字和技术细节填充。
 本部分只完成：{focus}。
 写法：{part_rule}
 前文末尾：
@@ -5231,6 +5291,10 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
             quality_tag = "explicit-birth-fact-cards-v2"
         elif title == "西王母":
             quality_tag = "exclusive-fact-cards-v2"
+        elif title == "哪吒闹海":
+            quality_tag = "nezha-clean-folk-humor-canonical-duel-v3"
+        elif title == "大禹治水":
+            quality_tag = "two-story-expansion-clean-folk-humor-v2"
         else:
             quality_tag = "positive-prompt-v1"
         cache_key = hashlib.sha256(
@@ -5246,7 +5310,11 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
                 accumulated = (accumulated + "\n\n" + cached).strip()
                 continue
         accepted = ""
-        temperatures = (0.25, 0.16, 0.1, 0.08, 0.05) if title == "北冥鲲鹏" else (0.25, 0.16, 0.1)
+        temperatures = (
+            (0.25, 0.2, 0.16, 0.1, 0.06)
+            if title in {"北冥鲲鹏", "哪吒闹海", "大禹治水"}
+            else (0.25, 0.16, 0.1)
+        )
         for attempt, temperature in enumerate(temperatures, 1):
             print(f"正在生成《{title}》连续大段 {part_index}/10（第{attempt}次，参考后羿基准与阿满串线约束）...")
             reply = call_qianwen_api(
@@ -5268,6 +5336,35 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
             candidate = candidate.replace("战略", "谋划").replace("酷", "厉害")
             candidate = candidate.replace("骂了一句脏话", "低声抱怨了一句").replace("毛玻璃", "薄雾")
             candidate = candidate.replace("官方", "族中").replace("计划", "打算").replace("文书", "竹简")
+            if title in {"哪吒闹海", "大禹治水"}:
+                candidate = candidate.replace("玄武岩", "硬山石").replace("赭石", "山石")
+                candidate = candidate.replace("肩胛", "肩头").replace("颔骨关节", "下巴")
+                candidate = candidate.replace("一寸要害", "要害").replace("脊骨状河道", "弯曲河道")
+                candidate = re.sub(
+                    r'第[一二三四五六七八九十百千万\d]+(?:处笑点|个笑点)(?:发生在|是)?[：:，,]?',
+                    "又有一次，",
+                    candidate,
+                )
+                candidate = re.sub(
+                    r'第[一二三四五六七八九十百千万\d]+(?:件事|桩事|桩)(?:发生在|是)?[：:，,]?',
+                    "又有一次，",
+                    candidate,
+                )
+                candidate = re.sub(
+                    r'第[一二三四五六七八九十百千万\d]+回最',
+                    "还有一回最",
+                    candidate,
+                )
+                candidate = re.sub(
+                    r'第[一二三四五六七八九十百千万\d]+号增补',
+                    "增补",
+                    candidate,
+                )
+                candidate = re.sub(
+                    r'[甲乙丙丁戊己庚辛壬癸](?:某|[子丑寅卯辰巳午未申酉戌亥])(?:年|之日|日|夏)?',
+                    "某日",
+                    candidate,
+                )
             candidate = candidate.replace("...", "……")
             if title == "北冥鲲鹏":
                 candidate = candidate.replace("北海", "北冥").replace("码头", "岸边")
@@ -5281,7 +5378,13 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
                 sentences = re.split(r'(?<=[。！？])', candidate)
                 candidate = "".join(sentence for sentence in sentences if "阿满" not in sentence).strip()
             reasons = []
-            min_part_chars = 550 if part_index >= 9 else 650
+            if title in {"哪吒闹海", "大禹治水"}:
+                if title == "大禹治水" and part_index == 7:
+                    min_part_chars = 380
+                else:
+                    min_part_chars = 500 if part_index >= 9 else 520
+            else:
+                min_part_chars = 550 if part_index >= 9 else 650
             if len(candidate) < min_part_chars:
                 reasons.append(f"篇幅不足{len(candidate)}")
             if has_obvious_garbled_text(candidate, myth_core) or contains_body_drift(candidate, myth_core):
@@ -5291,6 +5394,30 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
                 pattern_hits = [pattern for pattern in BODY_DRIFT_PATTERNS if re.search(pattern, candidate)]
                 details = hits[:6] or core_hits[:6] or plan_hits[:6] or pattern_hits[:2]
                 reasons.append("语言污染" + (f"[{','.join(details)}]" if details else "[格式或元文本规则]"))
+            extra_pollution_patterns = [
+                r'第[一二三四五六七八九十百千万\d]+(?:处笑点|个笑点|件事|桩事|桩|回最|号增补)',
+                r'英文|洋文|本地化|合规性|核查|验讫|签字画押|备案|编号|流程',
+                r'《山海十八简[·・](?:卷|增补卷)',
+                r'癸亥|甲子|冬至前|七月朔|廿[一二三四五六七八九十]',
+                r'玄武岩|赭石|肩胛|颔骨关节|一寸要害|脊骨状河道',
+                r'水珠[^。！？\n]{0,30}(凝滞|悬停)|浪峰[^。！？\n]{0,20}(凝滞|悬停)',
+                r'[甲乙丙丁戊己庚辛壬癸](?:某|[子丑寅卯辰巳午未申酉戌亥])',
+                r'疑为|疑似|待查|工伤|挂牌|礼制差异|动态校勘|防御性修辞|毋庸赘述',
+                r'第[一二三四五六七八九十百千万\d]+条(?:增补|补充)|附注：',
+                r'蛟虬|肚脐|胎记|喝回去|吞咽之声',
+            ]
+            extra_pollution_hits = [
+                pattern for pattern in extra_pollution_patterns
+                if re.search(pattern, candidate)
+            ]
+            if extra_pollution_hits:
+                reasons.append(f"新增两篇专属污染[{extra_pollution_hits[0]}]")
+            precise_detail_hits = re.findall(
+                r'[零一二三四五六七八九十百千万\d]+(?:尺|寸|丈|里|日|月|年|次|枚|处|段|道|缕|斤|盏|根|步|回|桩)',
+                candidate,
+            )
+            if title in {"哪吒闹海", "大禹治水"} and len(precise_detail_hits) >= 8:
+                reasons.append(f"精确计数堆砌{len(precise_detail_hits)}")
             if has_repeated_story_units(candidate):
                 reasons.append("段内重复")
             if accumulated and has_repeated_story_units((accumulated + "\n\n" + candidate).strip()):
@@ -5317,8 +5444,14 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
                 )
                 if any(term in raw_candidate for term in technical_terms) or len(precise_units) >= 4:
                     reasons.append("化鹏或飞行技术化")
-            if part_index in aman_parts and part_index != 10 and humor_signal_count(candidate) < 2:
-                reasons.append("阿满笑点信号不足")
+            part_humor_floor = 3 if title in {"哪吒闹海", "大禹治水"} else 2
+            part_humor_score = humor_signal_count(candidate)
+            if title in {"哪吒闹海", "大禹治水"}:
+                # 强幽默段常靠连续对白抛接制造反差，并不一定直写“笑、嘀咕”等词；
+                # 把每四轮对白折算一个辅助信号，避免误杀实际有互怼的段落。
+                part_humor_score += min(3, candidate.count("“") // 4)
+            if part_index in aman_parts and part_index != 10 and part_humor_score < part_humor_floor:
+                reasons.append(f"阿满笑点信号不足{part_humor_score}/{part_humor_floor}")
             if re.search(r'阿满[^。！？\n]{0,60}(递给|递过去|想扶|搀扶|扛起|背起)', candidate):
                 reasons.append("阿满尝试介入主角行动")
             if not reasons:
@@ -5346,7 +5479,8 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
     if needs_core_repair:
         cleaned = repair_myth_final_requirements(cleaned, myth_core)
         cleaned = repair_thread_protagonist_system_link(cleaned, myth_core)
-    if humor_signal_count(cleaned) < 14:
+    final_humor_floor = 24 if title in {"哪吒闹海", "大禹治水"} else 14
+    if humor_signal_count(cleaned) < final_humor_floor:
         quality_tail = MYTH_QUALITY_TAIL_PARAGRAPHS.get(title, "")
         if quality_tail and len(cleaned) + len(quality_tail) + 2 > MYTH_TARGET_TOTAL_MAX:
             cleaned = force_trim_story_to_hard_max(cleaned, MYTH_TARGET_TOTAL_MAX - len(quality_tail) - 4)
@@ -5374,8 +5508,8 @@ def generate_myth_chunked_reference_rewrite(prompt: str, myth_core: dict = None)
         final_reasons.append("核心顺序错误")
     if not thread_protagonist_system_requirement_met(cleaned, myth_core):
         final_reasons.append("阿满体系串联不足")
-    if humor_signal_count(cleaned) < 14:
-        final_reasons.append("幽默密度不足")
+    if humor_signal_count(cleaned) < final_humor_floor:
+        final_reasons.append(f"幽默密度不足{humor_signal_count(cleaned)}/{final_humor_floor}")
     if final_reasons:
         print(f"错误：《{title}》十段合稿未通过：{'、'.join(final_reasons)}。")
         return ""

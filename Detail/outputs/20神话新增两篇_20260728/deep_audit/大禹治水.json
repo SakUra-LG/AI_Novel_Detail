@@ -1,0 +1,19 @@
+{
+  "canonical_complete": 9,
+  "humor_quality": 8,
+  "aman_series_function": 10,
+  "prose_like_houyi_baseline": 7,
+  "unsupported_magic_or_plot": [],
+  "repetition_or_filler": [
+    "多次描写阿满摔倒/呛泥/墨糊却未深化功能，如'噗嗤一声''咚的一声闷响''啪嗒跌进'等物理窘态密集出现，部分属机械性重复强化",
+    "三过家门段落中对‘脚步’‘涟漪’‘水脉’的意象复沓稍显冗余，削弱了第三次经过应有的情感密度"
+  ],
+  "format_or_language_pollution": [
+    "‘始潦’‘卯时三刻’‘酉时雨注’等仿古纪时短语穿插过多，与整体白描口语风格偶有割裂，易读性微损",
+    "个别比喻过度绵长（如‘像被水泡胀的鱼鳍’‘像另一双刚睡醒的眼睛’），偏离神话叙事所需的筋骨感"
+  ],
+  "aman_violations": [],
+  "fatal_issues": [],
+  "verdict": "PASS",
+  "title": "大禹治水"
+}
