@@ -1,0 +1,26 @@
+{
+  "title": "大禹治水",
+  "block": 3,
+  "paragraph_index": 23,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "1d222fac3c414bb9db1d0c2b97b57e984b3cc8a0a09a25bcda3e3a0995995803",
+  "source_chars": 198,
+  "target_chars": 840,
+  "final_chars": 593,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 359,
+      "reasons": [
+        "偏短:359<588"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 593,
+      "reasons": []
+    }
+  ]
+}

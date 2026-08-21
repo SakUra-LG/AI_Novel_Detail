@@ -1,0 +1,18 @@
+{
+  "title": "愚公移山",
+  "block": 1,
+  "paragraph_index": 24,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "c64bc11d729a64c358c14d99df0ab61a71922fedb8c7bfffa40e88e5a64b896e",
+  "source_chars": 76,
+  "target_chars": 401,
+  "final_chars": 537,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 537,
+      "reasons": []
+    }
+  ]
+}

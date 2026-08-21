@@ -1,0 +1,32 @@
+{
+  "source_sha256": "2b4f59d54ec253feefb860f5ebc16aa7fbe4d0ad17923ea9ea3ba35caf501f4a",
+  "source_paragraph_indexes": [
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128
+  ],
+  "provider": "groq:llama-3.3-70b-versatile",
+  "translations": [
+    "Cangjie would occasionally pass by, just looking, not rewriting. If someone missed a stroke, the reader would ask questions; if someone mixed two things together, a fact-check would reveal the contradiction. Writing didn't make people never make mistakes, but it gave errors a place to be found and corrected. In the past, a single knot could lead to three people winning an argument each; now, if a line of text doesn't make sense, at least everyone is arguing about the same meaning.",
+    "Aman sat under a tree, holding the green bamboo slips, and suddenly stared at them for a long time. He had been recording what he saw on the \"Twenty Bamboo Slips of Mountains and Seas\", often complaining that the bamboo was heavy and the engraving was slow, and grumbling that some slips were as crowded as the Eight Immortals standing on a single magical artifact. It wasn't until now that he realized: being able to complain about \"crowded writing\" was a luxury he had later on.",
+    "If Cangjie hadn't initially seen the connection between shapes and objects in the footprints of birds and beasts, if he hadn't revised those symbols that would misread the sun as something to be eaten, and if he hadn't sealed yesterday's writing to be reread the next day, the green bamboo slips in Aman's hands would be just a bundle of neatly cut bamboo. What really made the \"Twenty Bamboo Slips of Mountains and Seas\" understandable to later generations wasn't the color of the bamboo or the speed of the engraving knife, but the fact that many people agreed on the same shapes, the same sequence, and the same meaning.",
+    "Aman picked up his old pen and wrote on a new slip: \"Cangjie observed the footprints of birds and beasts, took the shapes of all things, and created characters to record the human world.\"",
+    "A child nearby came to read it, and when they reached the end, they pointed to a place and asked: \"Is this written as 'human world' or 'people idle'?\"",
+    "Aman looked down and found that he had missed a stroke. He first thought of using the bamboo node's texture to argue, but he swallowed his words and seriously corrected it: \"It's 'human world'. If it were written as 'people idle', later generations would think we spend our days sitting around waiting for characters to grow on their own.\"",
+    "The child said: \"But you're sitting down right now.\"",
+    "\"I'm bearing witness.\"",
+    "\"Then write down the witness clearly.\"",
+    "Aman was left speechless by a child who had just learned to read and write, and had no choice but to properly engrave the word \"witness\". Cangjie, who was listening from the side, laughed and continued on his way, without coming back to help Aman finish.",
+    "From then on, the people who recorded grain continued to do so, the people who distinguished roads continued to add to them, the people who knew medicine passed on its uses to those who had never seen the plants, and the elderly passed on past events to their unborn descendants. Cangjie didn't need to stand next to every wooden or stone tablet to explain, and writing could be written, reread, and passed down independently.",
+    "Human memory was originally like footprints in the rain, which would be washed away by the next rain; from the time Cangjie created characters, it had a common shape. History and knowledge no longer only resided in someone's mouth, and could cross vast distances and wait out long years. He closed the \"Twenty Bamboo Slips of Mountains and Seas\", feeling that it wasn't just heavy – every engraving that could be understood by others started from the person who bent down to examine the footprints of birds and beasts."
+  ]
+}

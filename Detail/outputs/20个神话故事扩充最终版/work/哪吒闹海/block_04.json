@@ -1,0 +1,26 @@
+{
+  "title": "哪吒闹海",
+  "block": 4,
+  "paragraph_index": 43,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "3b07067f2f5f54d4beda472541e4bd82e6291248cc66137c664ee5e661f4421f",
+  "source_chars": 203,
+  "target_chars": 840,
+  "final_chars": 664,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 203,
+      "reasons": [
+        "偏短:203<588"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 664,
+      "reasons": []
+    }
+  ]
+}

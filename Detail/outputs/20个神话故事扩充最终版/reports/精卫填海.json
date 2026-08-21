@@ -1,0 +1,91 @@
+{
+  "title": "精卫填海",
+  "source_chars": 7934,
+  "final_chars": 10620,
+  "added_chars": 2686,
+  "target_range": [
+    8900,
+    11600
+  ],
+  "block_generation": [
+    {
+      "title": "精卫填海",
+      "block": 1,
+      "paragraph_index": 15,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "a2cfd592db2ae92b57faeb80d2ab95b90e1c1f577fe853cf0eb474c82cd7f36c",
+      "source_chars": 101,
+      "target_chars": 617,
+      "final_chars": 812,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 812,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "精卫填海",
+      "block": 2,
+      "paragraph_index": 49,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "890937340364313205814443a8053530c17cba42d30543b59006dae89e99a8cc",
+      "source_chars": 147,
+      "target_chars": 663,
+      "final_chars": 551,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 551,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "精卫填海",
+      "block": 3,
+      "paragraph_index": 70,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "844b224853a8f68bfb9fb45694ba8729707ae920c06aba6f017a09b1e66542ac",
+      "source_chars": 68,
+      "target_chars": 584,
+      "final_chars": 852,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 852,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "精卫填海",
+      "block": 4,
+      "paragraph_index": 96,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "94eae2aee366f5a46128fe58cc23d586caa4e928bf0873d1e1030169f809bbcd",
+      "source_chars": 121,
+      "target_chars": 639,
+      "final_chars": 908,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 908,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 80,
+  "dialogue_close_quotes": 80,
+  "humor_signal_count": 33,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "5a54684580abd5b9689e60c2625c5bbf807f57c11a889aef14a4ef006ffa9e14"
+}

@@ -1,0 +1,15 @@
+{
+  "title": "精卫填海",
+  "chapter": 3,
+  "plan_hash": "2462fee3e9738589",
+  "length": 918,
+  "manual_revision": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "temperature": 0.55,
+      "length": 1035,
+      "reasons": []
+    }
+  ]
+}

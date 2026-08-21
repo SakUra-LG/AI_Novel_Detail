@@ -1,0 +1,99 @@
+{
+  "title": "伏羲画卦",
+  "source_chars": 7621,
+  "final_chars": 11516,
+  "added_chars": 3895,
+  "target_range": [
+    8900,
+    11600
+  ],
+  "block_generation": [
+    {
+      "title": "伏羲画卦",
+      "block": 1,
+      "paragraph_index": 30,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "593f73c98de01a4b4cb6f49ac88ed416d3e3a15da06c846d7990a34ae3734368",
+      "source_chars": 129,
+      "target_chars": 723,
+      "final_chars": 1155,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1155,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "伏羲画卦",
+      "block": 2,
+      "paragraph_index": 59,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "b1c9c34ba600b6de1900e4a22955a349436f5e4e68cd52fcf56f60def9d8fb91",
+      "source_chars": 78,
+      "target_chars": 672,
+      "final_chars": 1014,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1014,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "伏羲画卦",
+      "block": 3,
+      "paragraph_index": 77,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "4eb5b1c3c858727d1d4039e963d2e6e8274a03b5450e7a778ab8ad119a03d281",
+      "source_chars": 80,
+      "target_chars": 674,
+      "final_chars": 1043,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1043,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "伏羲画卦",
+      "block": 4,
+      "paragraph_index": 98,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "976ebd523e11bfaccc3ff9667e13ebef14124c72bcb5c711bb019dc9e721b310",
+      "source_chars": 106,
+      "target_chars": 703,
+      "final_chars": 1076,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1070,
+          "reasons": [
+            "中文引号不配对"
+          ]
+        },
+        {
+          "attempt": 2,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1076,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 99,
+  "dialogue_close_quotes": 99,
+  "humor_signal_count": 35,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "81b218ff5919823b8f22be842763494ab4a406eceb82f4e4a57ce0b177a91b1d"
+}

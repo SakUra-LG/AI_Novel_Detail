@@ -1,0 +1,99 @@
+{
+  "title": "哪吒闹海",
+  "source_chars": 7452,
+  "final_chars": 9314,
+  "added_chars": 1862,
+  "target_range": [
+    8900,
+    11600
+  ],
+  "block_generation": [
+    {
+      "title": "哪吒闹海",
+      "block": 1,
+      "paragraph_index": 7,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "6e7d1cc5cfa19caa6c5671c8e34cd4c6d89567e9f56d6f43b8dba299ca987dbb",
+      "source_chars": 280,
+      "target_chars": 917,
+      "final_chars": 657,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 657,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "哪吒闹海",
+      "block": 2,
+      "paragraph_index": 17,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "c38421d613f51c00577b75794970c152fb70282e180bddb622e4eb49b28e0350",
+      "source_chars": 189,
+      "target_chars": 826,
+      "final_chars": 787,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 787,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "哪吒闹海",
+      "block": 3,
+      "paragraph_index": 25,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "b1387381e23b7cf93214e1a133e793396de426ab4e0f079856621b48dd240262",
+      "source_chars": 164,
+      "target_chars": 801,
+      "final_chars": 590,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 590,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "哪吒闹海",
+      "block": 4,
+      "paragraph_index": 43,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "3b07067f2f5f54d4beda472541e4bd82e6291248cc66137c664ee5e661f4421f",
+      "source_chars": 203,
+      "target_chars": 840,
+      "final_chars": 664,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 203,
+          "reasons": [
+            "偏短:203<588"
+          ]
+        },
+        {
+          "attempt": 2,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 664,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 117,
+  "dialogue_close_quotes": 117,
+  "humor_signal_count": 34,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "691c8527453fd12c2f44ffab40954922a5a503e8b4b09d655c4bfb9d1cfa3824"
+}

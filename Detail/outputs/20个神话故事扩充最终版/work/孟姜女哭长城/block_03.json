@@ -1,0 +1,26 @@
+{
+  "title": "孟姜女哭长城",
+  "block": 3,
+  "paragraph_index": 86,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "e61842df2b3cd8c7969c1b5bdf00cd2aa85e6e169dcc184308560dff805ff1ae",
+  "source_chars": 68,
+  "target_chars": 547,
+  "final_chars": 498,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 378,
+      "reasons": [
+        "偏短:378<382"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 498,
+      "reasons": []
+    }
+  ]
+}

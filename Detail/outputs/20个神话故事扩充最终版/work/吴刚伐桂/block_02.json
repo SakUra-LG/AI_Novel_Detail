@@ -1,0 +1,18 @@
+{
+  "title": "吴刚伐桂",
+  "block": 2,
+  "paragraph_index": 43,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "6cc9730c726a61403ca7ffeb98939164de86c4993363e3afc86b71242a5a4fdc",
+  "source_chars": 73,
+  "target_chars": 629,
+  "final_chars": 958,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 958,
+      "reasons": []
+    }
+  ]
+}

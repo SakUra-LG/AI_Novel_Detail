@@ -1,0 +1,26 @@
+{
+  "title": "梁山伯与祝英台",
+  "block": 4,
+  "paragraph_index": 130,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "c4d73b06c19c8985c3fb49bfffbb366ce862f200046d5d432b2e2cdd4dca152c",
+  "source_chars": 115,
+  "target_chars": 518,
+  "final_chars": 664,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 1009,
+      "reasons": [
+        "偏长:1009>854"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 664,
+      "reasons": []
+    }
+  ]
+}

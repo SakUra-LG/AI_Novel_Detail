@@ -92,7 +92,7 @@ def static_audit(main, title: str, text: str) -> dict:
         "no_thread_protagonist_violation": not main.contains_thread_protagonist_violation(text, myth_core),
         "has_aman": "阿满" in text,
         "has_bamboo_slips": "青竹简" in text,
-        "has_shanhai_18": "山海十八简" in text,
+        "has_shanhai_20": "山海二十简" in text,
         "has_external_myth_link": bool(external_terms),
         "forbidden_humor_clean": not any(marker in text for marker in main.FORBIDDEN_HUMOR_STYLE_MARKERS),
         "humor_requirement": main.humor_requirement_met(text, f"改写神话故事{title}，要求有幽默"),

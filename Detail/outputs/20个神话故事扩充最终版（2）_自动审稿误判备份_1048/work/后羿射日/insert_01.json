@@ -1,0 +1,17 @@
+{
+  "title": "后羿射日",
+  "block": 1,
+  "paragraph_index": 3,
+  "mode": "audited_plot_seam_insertion",
+  "source_hash": "506bb2d784aabe0ea69678f267390263e2672e28309a9b1080b3a68a8c34775f",
+  "target_chars": 538,
+  "final_chars": 534,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 534,
+      "reasons": []
+    }
+  ]
+}

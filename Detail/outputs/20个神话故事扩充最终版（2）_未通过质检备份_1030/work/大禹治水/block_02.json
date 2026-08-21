@@ -1,0 +1,26 @@
+{
+  "title": "大禹治水",
+  "block": 2,
+  "paragraph_index": 23,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "5997cb44f874cef35e7318812decc1d71a114a5e0fa651e9eac0d0480d8f470c",
+  "source_chars": 510,
+  "target_chars": 1454,
+  "final_chars": 1525,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:qwen/qwen3.6-27b",
+      "chars": 510,
+      "reasons": [
+        "偏短:510<727"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:qwen/qwen3.6-27b",
+      "chars": 1525,
+      "reasons": []
+    }
+  ]
+}

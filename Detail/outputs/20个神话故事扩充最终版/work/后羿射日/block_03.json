@@ -1,0 +1,36 @@
+{
+  "title": "后羿射日",
+  "block": 3,
+  "paragraph_index": 19,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "580addca91610ae9e9ebb68525528ad44004a96aebcb9c301613957d11a1dde5",
+  "source_chars": 176,
+  "target_chars": 938,
+  "final_chars": 542,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 542,
+      "reasons": [
+        "偏短:542<656"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 542,
+      "reasons": [
+        "偏短:542<656"
+      ]
+    },
+    {
+      "attempt": 3,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 542,
+      "reasons": [
+        "偏短:542<656"
+      ]
+    }
+  ]
+}

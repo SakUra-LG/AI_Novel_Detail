@@ -1,0 +1,107 @@
+{
+  "title": "梁山伯与祝英台",
+  "source_chars": 8397,
+  "final_chars": 10222,
+  "added_chars": 1825,
+  "target_range": [
+    8900,
+    11600
+  ],
+  "block_generation": [
+    {
+      "title": "梁山伯与祝英台",
+      "block": 1,
+      "paragraph_index": 17,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "9160c782331a47796983f14447bd3b19f6a57c9d51797e72fef298ff74dbded9",
+      "source_chars": 97,
+      "target_chars": 497,
+      "final_chars": 432,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 432,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "梁山伯与祝英台",
+      "block": 2,
+      "paragraph_index": 44,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "f75075962157957def1de0c185e47c31a0a766f635a35a0ce81384b7529cb7e2",
+      "source_chars": 67,
+      "target_chars": 467,
+      "final_chars": 377,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 377,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "梁山伯与祝英台",
+      "block": 3,
+      "paragraph_index": 85,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "40090b15003cecf3ff626efbbc3e73d0d1afc48dc1cf58e419569c971204e564",
+      "source_chars": 130,
+      "target_chars": 530,
+      "final_chars": 761,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 333,
+          "reasons": [
+            "偏短:333<371"
+          ]
+        },
+        {
+          "attempt": 2,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 761,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "梁山伯与祝英台",
+      "block": 4,
+      "paragraph_index": 130,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "c4d73b06c19c8985c3fb49bfffbb366ce862f200046d5d432b2e2cdd4dca152c",
+      "source_chars": 115,
+      "target_chars": 518,
+      "final_chars": 664,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 1009,
+          "reasons": [
+            "偏长:1009>854"
+          ]
+        },
+        {
+          "attempt": 2,
+          "provider": "groq:openai/gpt-oss-20b",
+          "chars": 664,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 106,
+  "dialogue_close_quotes": 106,
+  "humor_signal_count": 41,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "85180d9252f08d2f14c31de19b1e304f59e4130f2e963ecab4273de919cb8bc8"
+}

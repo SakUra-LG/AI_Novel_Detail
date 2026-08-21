@@ -1,0 +1,18 @@
+{
+  "title": "牛郎织女",
+  "block": 1,
+  "paragraph_index": 42,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "26b7243ac06ae7119837ff0752e88141b090b971f1b83c53d52e08954b5cc8e7",
+  "source_chars": 62,
+  "target_chars": 443,
+  "final_chars": 657,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 657,
+      "reasons": []
+    }
+  ]
+}

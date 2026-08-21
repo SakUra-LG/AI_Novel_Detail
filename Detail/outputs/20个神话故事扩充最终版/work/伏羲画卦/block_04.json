@@ -1,0 +1,26 @@
+{
+  "title": "伏羲画卦",
+  "block": 4,
+  "paragraph_index": 98,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "976ebd523e11bfaccc3ff9667e13ebef14124c72bcb5c711bb019dc9e721b310",
+  "source_chars": 106,
+  "target_chars": 703,
+  "final_chars": 1076,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 1070,
+      "reasons": [
+        "中文引号不配对"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 1076,
+      "reasons": []
+    }
+  ]
+}

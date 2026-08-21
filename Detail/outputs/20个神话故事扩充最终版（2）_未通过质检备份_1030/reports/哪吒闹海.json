@@ -1,0 +1,81 @@
+{
+  "title": "哪吒闹海",
+  "source_chars": 8030,
+  "final_chars": 10716,
+  "added_chars": 2686,
+  "target_range": [
+    10300,
+    null
+  ],
+  "block_generation": [
+    {
+      "title": "哪吒闹海",
+      "block": 1,
+      "paragraph_index": 7,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "ae4ded8f4e9d5502df46a64eac12fd5f057e957e85cdab4ebcaea1398ca0768b",
+      "source_chars": 566,
+      "target_chars": 1422,
+      "final_chars": 1465,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1465,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "哪吒闹海",
+      "block": 2,
+      "paragraph_index": 19,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "518ec2d112fbddabdcbc496b125d8d753d9d702d83ab3df8ce19b660af9af3aa",
+      "source_chars": 95,
+      "target_chars": 951,
+      "final_chars": 929,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 929,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "哪吒闹海",
+      "block": 3,
+      "paragraph_index": 48,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "0e924ba61b968b7ba608e7ed19c9478756636418ebd1088b287764c706e5ec07",
+      "source_chars": 173,
+      "target_chars": 1031,
+      "final_chars": 1126,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1379,
+          "reasons": [
+            "偏长:1379>1216"
+          ]
+        },
+        {
+          "attempt": 2,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 1126,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 137,
+  "dialogue_close_quotes": 137,
+  "humor_signal_count": 51,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "f092f05f5b964a8357272ab6c417d0ce351de3eb3ee6df0cde2aeb56e3145f41"
+}

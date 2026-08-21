@@ -1,0 +1,26 @@
+{
+  "title": "仓颉造字",
+  "block": 3,
+  "paragraph_index": 84,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "37e502167fa34f24dda869ee0542f258779695375ebc7797963cbc01727b60a6",
+  "source_chars": 118,
+  "target_chars": 489,
+  "final_chars": 465,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 514,
+      "reasons": [
+        "现代或技术化措辞:血管"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 465,
+      "reasons": []
+    }
+  ]
+}

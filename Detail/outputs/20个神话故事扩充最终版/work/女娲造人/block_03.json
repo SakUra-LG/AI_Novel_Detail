@@ -1,0 +1,18 @@
+{
+  "title": "女娲造人",
+  "block": 3,
+  "paragraph_index": 77,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "5aae6d8c2dbc7800b6d53f9bce606ca1401ed271773801f291e57d353df74b07",
+  "source_chars": 55,
+  "target_chars": 472,
+  "final_chars": 561,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 561,
+      "reasons": []
+    }
+  ]
+}

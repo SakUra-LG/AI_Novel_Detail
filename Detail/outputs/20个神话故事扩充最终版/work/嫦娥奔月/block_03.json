@@ -1,0 +1,18 @@
+{
+  "title": "嫦娥奔月",
+  "block": 3,
+  "paragraph_index": 77,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "c6f42211999d9ccb3f7ea79b0482486fe6f37ca3d5d7cc3141409ff698d2bf3c",
+  "source_chars": 73,
+  "target_chars": 682,
+  "final_chars": 681,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 681,
+      "reasons": []
+    }
+  ]
+}

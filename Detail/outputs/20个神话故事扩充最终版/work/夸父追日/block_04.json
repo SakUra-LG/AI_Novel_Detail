@@ -1,0 +1,18 @@
+{
+  "title": "夸父追日",
+  "block": 4,
+  "paragraph_index": 103,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "e77aea3fc0ac0cca51b0b03b8ccc3b6015f358b3e3d9abda1f70e2b1808f079c",
+  "source_chars": 100,
+  "target_chars": 663,
+  "final_chars": 975,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 975,
+      "reasons": []
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "title": "后羿射日",
+  "block": 4,
+  "paragraph_index": 31,
+  "mode": "audited_plot_seam_insertion",
+  "source_hash": "2e986587be4b4bf748d1facdfd7d1b8c5451adb47c1396fcda147d4985bfa823",
+  "target_chars": 538,
+  "final_chars": 407,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 696,
+      "reasons": [
+        "语义审稿:语义审稿未返回合法JSON"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 406,
+      "reasons": [
+        "语义审稿:语义审稿JSON损坏"
+      ]
+    },
+    {
+      "attempt": 3,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 595,
+      "reasons": [
+        "语义审稿:1. 替换段未包含后羿射落九个太阳的核心行动，导致核心事件链不完整。",
+        "语义审稿:2. 替换段中出现“十个炽热的太阳正像一群不安分的孩子”与“十个太阳像一群大火球”，但未描述射击过程，违反“必须保留射落九日”要求。",
+        "语义审稿:3. 替换段中出现“后羿抬手一挥，手中的弓像被风吹开的风筝，突然失控”，与禁止元素“射掉十日”不符，且未体现射九留一。",
+        "语义审稿:4. 替换段中出现“土豆炸弹”等现代幽默元素，违背禁止元素列表。",
+        "语义审稿:5. 替换段中出现“后羿轻轻推开，树枝在空中划出一道弧线，砸在一只正在晒太阳的土豆上”，与核心事件无关，且破坏连贯性。"
+      ]
+    },
+    {
+      "attempt": 4,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 407,
+      "reasons": []
+    }
+  ]
+}

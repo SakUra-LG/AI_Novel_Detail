@@ -1,0 +1,18 @@
+{
+  "title": "精卫填海",
+  "block": 2,
+  "paragraph_index": 49,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "890937340364313205814443a8053530c17cba42d30543b59006dae89e99a8cc",
+  "source_chars": 147,
+  "target_chars": 663,
+  "final_chars": 551,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 551,
+      "reasons": []
+    }
+  ]
+}

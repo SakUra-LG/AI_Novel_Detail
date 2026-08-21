@@ -1,0 +1,36 @@
+{
+  "title": "牛郎织女",
+  "block": 3,
+  "paragraph_index": 119,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "9b9bf8cab17b311a437234a534ed2848433a4f723a5d16340e50dc0796dcafb7",
+  "source_chars": 99,
+  "target_chars": 480,
+  "final_chars": 319,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 209,
+      "reasons": [
+        "偏短:209<336"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 254,
+      "reasons": [
+        "偏短:254<336"
+      ]
+    },
+    {
+      "attempt": 3,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 319,
+      "reasons": [
+        "偏短:319<336"
+      ]
+    }
+  ]
+}

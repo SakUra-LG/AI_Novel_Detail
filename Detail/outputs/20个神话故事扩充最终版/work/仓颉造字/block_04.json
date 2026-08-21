@@ -1,0 +1,18 @@
+{
+  "title": "仓颉造字",
+  "block": 4,
+  "paragraph_index": 112,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "28677d10f857b560e32a0df8959bdf23023455dc61b6fb8b8e2f4a4046051821",
+  "source_chars": 103,
+  "target_chars": 474,
+  "final_chars": 496,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 496,
+      "reasons": []
+    }
+  ]
+}

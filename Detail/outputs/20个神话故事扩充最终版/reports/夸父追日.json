@@ -1,0 +1,91 @@
+{
+  "title": "夸父追日",
+  "source_chars": 7757,
+  "final_chars": 11290,
+  "added_chars": 3533,
+  "target_range": [
+    8900,
+    11600
+  ],
+  "block_generation": [
+    {
+      "title": "夸父追日",
+      "block": 1,
+      "paragraph_index": 34,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "23a912df389a8c1466a5b9f246ec5794a853e35cdba3b401329f0efeb7f0c217",
+      "source_chars": 95,
+      "target_chars": 655,
+      "final_chars": 971,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 971,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "夸父追日",
+      "block": 2,
+      "paragraph_index": 60,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "4057d210dde185592a7a6fbbd3eccb7a40baaf1aa9c576cd87cc035690613bcd",
+      "source_chars": 73,
+      "target_chars": 633,
+      "final_chars": 946,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 946,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "夸父追日",
+      "block": 3,
+      "paragraph_index": 80,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "5633fb10d5fd987f4911a00fb42e707eb4bd5d863f97316fcd3a0704f7184276",
+      "source_chars": 57,
+      "target_chars": 617,
+      "final_chars": 966,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 966,
+          "reasons": []
+        }
+      ]
+    },
+    {
+      "title": "夸父追日",
+      "block": 4,
+      "paragraph_index": 103,
+      "mode": "in_place_paragraph_expansion",
+      "source_hash": "e77aea3fc0ac0cca51b0b03b8ccc3b6015f358b3e3d9abda1f70e2b1808f079c",
+      "source_chars": 100,
+      "target_chars": 663,
+      "final_chars": 975,
+      "attempts": [
+        {
+          "attempt": 1,
+          "provider": "groq:openai/gpt-oss-120b",
+          "chars": 975,
+          "reasons": []
+        }
+      ]
+    }
+  ],
+  "dialogue_open_quotes": 59,
+  "dialogue_close_quotes": 59,
+  "humor_signal_count": 18,
+  "meta_hits": [],
+  "passed": true,
+  "failures": [],
+  "source_sha256": "81f1445a1e380aee6b08e72957c309848067a13fcbf052ed20d528cd8e9b7006"
+}

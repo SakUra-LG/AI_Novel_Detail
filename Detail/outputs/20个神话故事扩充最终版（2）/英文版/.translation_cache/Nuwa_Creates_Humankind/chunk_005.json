@@ -1,0 +1,10 @@
+{
+  "source_sha256": "3ea6bfed90e83ae178f7cb85a6aafca75dcc9d777573a9b2fceb9a82f9cb8c0d",
+  "source_paragraph_indexes": [
+    147
+  ],
+  "provider": "groq:openai/gpt-oss-120b",
+  "translations": [
+    "Nüwa no longer sits alone, waiting for no one to answer her calls. She isn’t the judge of every tiny dispute either; she watches from afar and, when needed, nudges living things to cherish one another. Meanwhile, humans spread out across mountains and rivers, filling the once‑silent world with countless new voices."
+  ]
+}

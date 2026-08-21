@@ -1,0 +1,36 @@
+{
+  "source_sha256": "0aa9c3f1784b80c82cb761580756eb2ad8ee750a52340e56dafea4e501eba92a",
+  "source_paragraph_indexes": [
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34
+  ],
+  "provider": "groq:openai/gpt-oss-120b",
+  "translations": [
+    "He traced a pattern of dots on the damp sand with a branch, then had people look at it from upstream, downstream, and the opposite bank. When the viewpoint changed, the surface seemed different, but the harmony between the center and the four directions stayed the same. Fuxi compared the River Diagram with the shifting sun and the rise and fall of the water, step by step: the sun rises on one side and sets on the other; water gathers in low places and then recedes with the seasons. The world isn’t a chaotic pile—it holds itself together through opposites, cycles, and transformation.",
+    "The dragon‑horse halted at the riverbank as the evening light slanted down, then turned and stepped into the water. Everyone rushed to ask Fuxi if he’d remembered the diagram. Some even wanted to wade in and fetch the dragon‑horse back, saying they’d been too busy guarding the valley and hadn’t seen which dark spot went where.",
+    "Fuxi stopped them. He had already sketched the River Diagram on the shore, and more importantly he understood that the diagram wasn’t a finished bagua nor a magic key to the world. It merely displayed the correspondence of black and white, directions and numbers, reminding the observer that seemingly opposite forces can depend on each other, and that change follows a traceable order.",
+    "The river quickly washed away the dragon‑horse’s footprints, but it left the dot pattern on the sand untouched. As night fell, Fuxi sat down and matched each line of the pattern with what he’d seen before. From those observations he inferred: if everyone is to grasp this relative change, they’ll need symbols even simpler than grouped dots—signs that can be recombined over and over.",
+    "Fuxi first tried drawing the sun, the moon, flowing water, and rocks.",
+    "The more he drew, the bigger the problem grew. The sun can be bright, rainy, or half‑hidden behind clouds; the moon waxes and wanes; a river can be a lazy ribbon or a raging beast. If he made a separate symbol for every single look, the symbols would become as cluttered as the world itself, and people would still miss the common thread of change.",
+    "He stripped away the concrete shapes, leaving only two lines. One ran continuously from head to tail, representing outward, bright, moving, and growing; the other was broken in the middle, representing inward, dim, still, and hidden. The whole line he called the Yang line, the broken one the Yin line.",
+    "Someone staring at the broken line asked, “Did you get tired halfway through drawing it?”",
+    "Fuxi replied, “If I were tired, the empty space would be lying down, not drawing.”",
+    "He didn’t prove yin and yang with a joke; he took the two lines back into the world to test them. At the first break of dawn, when the morning light just sliced through the night’s curtain, Fuxi stood on a mountaintop, gently brushing the two fresh thin lines—one whole long line for Yang, one short broken line for Yin. Aman followed close behind, carrying an old bamboo basket filled with last night’s collected dew and a few freshly snapped willow branches, ready to record every move Fuxi made.",
+    "Fuxi looked eastward, where the sun’s rays unfurled like golden silk across the sky. He lifted the whole long line high, its tip pointing at the rising sun, and said in a deep, resonant voice, “When the sun rises, Yang stretches out, revealing all things; the line’s unbroken flow matches that.” Aman couldn’t help laughing, “Big brother, are you trying to pull the sun down with that line?” Fuxi gave him no direct look, just a slight nod, signaling Aman to pour the basket’s dew onto the long line. The dew vaporized instantly in the sunlight, a fine mist forming a gentle haze that highlighted the line’s shine, as if Yang’s breath were flowing through the air.",
+    "Later, night fell and the moon poured down like liquid silver. Fuxi placed the broken short line on the ground, its tip pointing toward a distant valley. Aman leaned in, whispering, “The line’s broken—did you draw it wrong?” Fuxi smiled calmly, “When night comes, plants withdraw; the broken line expresses that hiddenness.” He traced the break with his fingertip; a breeze stirred, and dry leaves in the valley trembled, as if answering the “break.” Aman clapped, delighted, “So you let the wind help explain the ‘break’!”",
+    "Fuxi kept watching the river. In the heart of the current, water roared and splashed like a charging dragon. Pointing at the rapid, he said, “The fierce middle flow can be seen as Yang.” He tossed the whole long line gently into the water; it rode the waves yet stayed straight, embodying Yang’s steadfast vigor. Aman, feeling mischievous, handed Fuxi a willow twig, “How about using this as a ‘Yang’ flag?” Fuxi smiled without a word, slipped the twig onto the line, and let it sway with the current, casting a green flash that looked just like Yang’s lively energy.",
+    "Then he turned to a calm bend on the riverbank, where the water lay smooth as a mirror, reflecting the stars. “The quiet bend is softer, so it’s Yin,” Fuxi said. He set the broken short line lightly on a stone by the shore, its tip dipping into the water; the line’s gentle touch sent tiny ripples across the surface, soft and serene. Aman leaned close, amazed, “It looks like the line is taking a nap in the water!” Fuxi nodded, “Yin is gentle like water, yet it has its own force.”"
+  ]
+}

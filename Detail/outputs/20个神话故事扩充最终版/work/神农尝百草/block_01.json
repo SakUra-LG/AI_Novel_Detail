@@ -1,0 +1,18 @@
+{
+  "title": "神农尝百草",
+  "block": 1,
+  "paragraph_index": 26,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "f3c7093724eac224a1dce1eaeb1a87f0f0b915c640ac3cb0a92056f1812d3350",
+  "source_chars": 69,
+  "target_chars": 514,
+  "final_chars": 732,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 732,
+      "reasons": []
+    }
+  ]
+}

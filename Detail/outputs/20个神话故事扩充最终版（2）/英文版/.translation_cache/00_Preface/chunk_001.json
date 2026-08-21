@@ -1,0 +1,24 @@
+{
+  "source_sha256": "e133225d1308edc827f98f112875eed5ed6f9b06f4cc84a5bcf0dae138f3bcd8",
+  "source_paragraph_indexes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "provider": "groq:qwen/qwen3.6-27b",
+  "translations": [
+    "The Twenty Bamboo Slips of Mountains and Seas: General Preface",
+    "In the Jade Pool of Kunlun, there is a special kind of green bamboo slip. It doesn't record the reign years of the mortal world; instead, it records those moments in heaven and earth that must never be forgotten.",
+    "Aman is the keeper of these green slips. His official title is Junior Historian of the Jade Pool's Observations. Whether people call him the 'Junior Historian of Observations,' the 'Jade Pool Junior Historian,' or simply 'the Junior Historian,' they are all talking about him. The Queen Mother of the West gave him an old pen that constantly sheds its bristles, a small cloth bag for holding bamboo slips, and a green ribbon embroidered with the water patterns of the Jade Pool. She ordered him to travel through the mountains and seas, to witness twenty mythological events with his own eyes and record them truthfully.",
+    "Aman is not bound by the dynasties of the mortal world. Whenever a blank green slip glows faintly, he is drawn to a moment when a myth is unfolding: sometimes he arrives at the ancient riverbank where Nüwa created humans, sometimes he stands on the scorched earth beneath Hou Yi's bow, and sometimes he finds himself instantly inside Chentang Pass, at the foot of the Great Wall, or in the academy where Liang Shanbo and Zhu Yingtai studied. Once the event concludes, he follows the green ribbon back to the Jade Pool. Therefore, the order in which he visits each story is neither the chronological order of human history nor the age of the gods, but the 'mythological sequence' that the green slips unfold for him.",
+    "So, when Aman says 'last time,' 'later,' or 'the next slip,' he is only referring to his personal journey of recording, not implying that one myth happened earlier or later in history than another. The slip titled 'The Queen Mother of the West' records the origin of his mission to travel far; its position in the book does not mean this appointment must chronologically precede all other stories.",
+    "He can leap across eras, but he cannot foresee the ending; he can stand on the scene, but he cannot fulfill the destiny of the mythological characters for them. Mending the sky still requires Nüwa to smelt stones, shooting down the suns still requires Hou Yi to draw his bow, and moving mountains still requires the Foolish Old Man and his descendants to swing their hoes without cease. All Aman can do is protect the green bamboo slips, occasionally crack a joke to give people a moment to breathe, and when the truly heavy moments arrive, quietly write down everyone's choices and their costs.",
+    "These twenty observations eventually combine to form The Twenty Bamboo Slips of Mountains and Seas. The stories in the slips do not line up by dynasty; instead, they reflect each other within the same mythological realm: a single stone can remind one of Jingwei and the Foolish Old Man, two distant beams of clear light can connect Chang'e and the Weaver Girl, and Aman's increasingly bald old pen always follows the guidance of the green slips, moving from one era to another.",
+    "When you turn to the next slip, just remember this: myths have their own order, and Aman has his own path."
+  ]
+}

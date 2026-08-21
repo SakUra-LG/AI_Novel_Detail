@@ -1,0 +1,26 @@
+{
+  "title": "北冥鲲鹏",
+  "block": 4,
+  "paragraph_index": 170,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "0f246c3b7078916ea4245dfca3b87819322157a5aa07ab0b8eb4c229c2a4c714",
+  "source_chars": 80,
+  "target_chars": 533,
+  "final_chars": 590,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 1018,
+      "reasons": [
+        "偏长:1018>879"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 590,
+      "reasons": []
+    }
+  ]
+}

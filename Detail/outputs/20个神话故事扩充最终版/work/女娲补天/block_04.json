@@ -1,0 +1,36 @@
+{
+  "title": "女娲补天",
+  "block": 4,
+  "paragraph_index": 89,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "3b4e1a614b93ff5d7d12ca78db1b60327efd8657e61585058260e85e9555e2b7",
+  "source_chars": 79,
+  "target_chars": 649,
+  "final_chars": 425,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 425,
+      "reasons": [
+        "偏短:425<454"
+      ]
+    },
+    {
+      "attempt": 2,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 292,
+      "reasons": [
+        "偏短:292<454"
+      ]
+    },
+    {
+      "attempt": 3,
+      "provider": "groq:openai/gpt-oss-20b",
+      "chars": 325,
+      "reasons": [
+        "偏短:325<454"
+      ]
+    }
+  ]
+}

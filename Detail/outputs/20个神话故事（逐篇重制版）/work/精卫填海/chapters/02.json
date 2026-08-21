@@ -1,0 +1,24 @@
+{
+  "title": "精卫填海",
+  "chapter": 2,
+  "plan_hash": "2162ff9d6cfd3573",
+  "model": "qwen-plus",
+  "generation_mode": "two_causal_scenes",
+  "length": 1087,
+  "attempts": [
+    {
+      "scene": 1,
+      "attempt": 1,
+      "temperature": 0.48,
+      "length": 524,
+      "reasons": []
+    },
+    {
+      "scene": 2,
+      "attempt": 1,
+      "temperature": 0.48,
+      "length": 563,
+      "reasons": []
+    }
+  ]
+}

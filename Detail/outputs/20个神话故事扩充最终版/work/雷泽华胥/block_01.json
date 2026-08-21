@@ -1,0 +1,18 @@
+{
+  "title": "雷泽华胥",
+  "block": 1,
+  "paragraph_index": 21,
+  "mode": "in_place_paragraph_expansion",
+  "source_hash": "10b68fd2a04f81763b5207e027f758fe3929a5478882a47b9ce260d22ebbcd82",
+  "source_chars": 55,
+  "target_chars": 619,
+  "final_chars": 986,
+  "attempts": [
+    {
+      "attempt": 1,
+      "provider": "groq:openai/gpt-oss-120b",
+      "chars": 986,
+      "reasons": []
+    }
+  ]
+}
